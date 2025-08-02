@@ -1,0 +1,1460 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR實測效率查詢系統</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header p {
+            color: #6c757d;
+            font-size: 1.2em;
+            font-weight: 300;
+        }
+        
+        .admin-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .admin-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        .admin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.6);
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 8px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 18px;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .tab.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .tab:hover:not(.active) {
+            background: #e9ecef;
+            transform: translateY(-1px);
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.6s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+        
+        .form-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            color: white;
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+        }
+        
+        .form-title {
+            font-size: 2em;
+            margin-bottom: 30px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            font-size: 14px;
+        }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            background: rgba(255,255,255,0.9);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            background: white;
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            border-color: #43e97b;
+        }
+        
+        .file-upload {
+            grid-column: 1 / -1;
+            background: rgba(255,255,255,0.15);
+            border: 3px dashed rgba(255,255,255,0.5);
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .file-upload:hover {
+            background: rgba(255,255,255,0.25);
+            transform: scale(1.02);
+            border-color: rgba(255,255,255,0.8);
+        }
+        
+        .file-upload input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .file-upload-content {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #43e97b, #38f9d7);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(67, 233, 123, 0.4);
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(67, 233, 123, 0.6);
+        }
+        
+        .search-container {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 35px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .results-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        
+        .record-item {
+            background: linear-gradient(90deg, #f8f9fa, #e9ecef);
+            padding: 25px;
+            margin-bottom: 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .record-item:hover {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            color: white;
+            transform: translateX(10px);
+            border-color: #43e97b;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+        
+        .record-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .record-details {
+            font-size: 14px;
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+        
+        .download-btn {
+            background: linear-gradient(45deg, #38f9d7, #43e97b);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .download-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(56, 249, 215, 0.4);
+        }
+        
+        .status-message {
+            padding: 15px 25px;
+            border-radius: 12px;
+            margin: 15px 0;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .status-success {
+            background: linear-gradient(45deg, #43e97b, #38f9d7);
+            color: white;
+        }
+        
+        .status-error {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+        
+        .admin-section {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            padding: 30px;
+            border-radius: 20px;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .admin-functions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+        
+        .admin-card {
+            background: rgba(255,255,255,0.15);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 20px 30px;
+            background: linear-gradient(45deg, #43e97b, #38f9d7);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(67, 233, 123, 0.4);
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.error {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+        
+        .chart-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .chart-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            font-size: 14px;
+        }
+        
+        .chart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .chart-btn.danger {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            min-width: 400px;
+            max-width: 80vw;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #2c3e50;
+        }
+        
+        .table-structure {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+        }
+        
+        .column-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .column-info {
+            flex: 1;
+        }
+        
+        .column-name {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .column-type {
+            font-size: 12px;
+            color: #6c757d;
+            margin-left: 10px;
+        }
+        
+        .btn-small {
+            padding: 5px 12px;
+            font-size: 12px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #43e97b, #38f9d7);
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .admin-functions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-panel">
+        <button id="adminToggle" class="admin-btn" onclick="toggleAdmin()">管理者登入</button>
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>⚡ VR實測效率查詢系統</h1>
+            <p>Voltage Regulator Efficiency Analysis Platform</p>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('upload')">📊 上傳數據</div>
+            <div class="tab" onclick="switchTab('search')">🔍 搜尋分析</div>
+            <div class="tab" onclick="switchTab('charts')">📈 效率圖表</div>
+            <div id="adminTab" class="tab" onclick="switchTab('admin')" style="display: none;">⚙️ 系統管理</div>
+        </div>
+        
+        <!-- 上傳數據頁面 -->
+        <div id="upload" class="tab-content active">
+            <div class="form-container">
+                <h2 class="form-title">📤 上傳效率測試數據</h2>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>使用者名稱 *</label>
+                            <input type="text" name="user_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>PCB 名稱 *</label>
+                            <input type="text" name="pcb_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Power Stage 名稱 *</label>
+                            <input type="text" name="powerstage_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>相數 *</label>
+                            <input type="number" name="phase_count" required min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>頻率 (kHz) *</label>
+                            <input type="number" name="frequency" required min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>電感值 (nH) *</label>
+                            <input type="number" name="inductor_value" required min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>TLVR</label>
+                            <input type="number" name="tlvr" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>最大電流 (A) *</label>
+                            <input type="number" name="imax" required min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>備註</label>
+                            <textarea name="notice" rows="3" placeholder="測試條件備註..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="file-upload">
+                        <input type="file" id="csvFile" name="file" accept=".csv" required>
+                        <label for="csvFile" class="file-upload-content">
+                            📁 點擊選擇 CSV 檔案<br>
+                            <small>支援格式：Istep, Vin, Iin, Vout, remote Vout sense, Iout, Efficiency, Efficiency_remote</small>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">🚀 上傳測試數據</button>
+                </form>
+                
+                <div id="uploadStatus"></div>
+            </div>
+        </div>
+        
+        <!-- 搜尋分析頁面 -->
+        <div id="search" class="tab-content">
+            <div class="search-container">
+                <h2 class="form-title">🔍 多條件搜尋</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Power Stage 名稱</label>
+                        <input type="text" id="searchPowerstage" placeholder="例：TDA22594A">
+                    </div>
+                    <div class="form-group">
+                        <label>相數</label>
+                        <input type="number" id="searchPhase" placeholder="例：6">
+                    </div>
+                    <div class="form-group">
+                        <label>頻率 (kHz)</label>
+                        <input type="number" id="searchFrequency">
+                    </div>
+                    <div class="form-group">
+                        <label>電感值 (nH)</label>
+                        <input type="number" id="searchInductor">
+                    </div>
+                    <div class="form-group">
+                        <label>PCB 名稱</label>
+                        <input type="text" id="searchPcb">
+                    </div>
+                    <div class="form-group">
+                        <button class="btn-primary" onclick="searchRecords()">🔍 搜尋記錄</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="results-container">
+                <h3>📋 搜尋結果</h3>
+                <div id="searchResults"></div>
+            </div>
+            
+            <div class="chart-container">
+                <h3>📊 多組效率比較</h3>
+                <div class="chart-controls">
+                    <button class="chart-btn" onclick="showMultiChart()">顯示比較圖表</button>
+                    <button class="chart-btn" onclick="clearChart()">清除圖表</button>
+                </div>
+                <canvas id="multiCompareChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+        
+        <!-- 效率圖表頁面 -->
+        <div id="charts" class="tab-content">
+            <div class="chart-container">
+                <h2>📈 效率曲線分析</h2>
+                <div class="chart-controls">
+                    <select id="recordSelector" style="padding: 12px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="">選擇測試記錄...</option>
+                    </select>
+                    <button class="chart-btn" onclick="loadSingleChart()">載入圖表</button>
+                    <button class="chart-btn" onclick="downloadCurrentData()">下載原始數據</button>
+                </div>
+                
+                <canvas id="efficiencyChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+        
+        <!-- 管理者頁面 -->
+        <div id="admin" class="tab-content">
+            <div class="admin-section">
+                <h2 class="form-title">⚙️ 系統管理</h2>
+                
+                <div class="admin-functions">
+                    <div class="admin-card">
+                        <h3>💾 資料庫備份</h3>
+                        <p>下載完整資料庫備份檔案</p>
+                        <button class="btn-primary" onclick="backupDatabase()">下載備份</button>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>📥 資料庫還原</h3>
+                        <p>上傳備份檔案進行還原</p>
+                        <input type="file" id="restoreFile" accept=".sqlite" style="margin: 10px 0;">
+                        <button class="btn-primary" onclick="restoreDatabase()">還原資料庫</button>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>🛠️ 資料表管理</h3>
+                        <p>管理資料表欄位結構</p>
+                        <button class="btn-primary" onclick="showTableManager()">管理資料表</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 通知元件 -->
+    <div id="notification" class="notification"></div>
+    
+    <!-- 管理者登入模態框 -->
+    <div id="adminLoginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">🔐 管理者登入</div>
+            <div class="form-group">
+                <label>管理者密碼</label>
+                <input type="password" id="adminPassword" style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd;">
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn-primary" onclick="adminLogin()">登入</button>
+                <button class="chart-btn" onclick="closeModal('adminLoginModal')">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 資料表管理模態框 -->
+    <div id="tableManagerModal" class="modal">
+        <div class="modal-content" style="min-width: 600px;">
+            <div class="modal-header">🛠️ 資料表結構管理</div>
+            
+            <div style="margin-bottom: 20px;">
+                <label>選擇資料表：</label>
+                <select id="tableSelector" onchange="loadTableStructure()" style="padding: 10px; border-radius: 8px; margin-left: 10px;">
+                    <option value="">請選擇...</option>
+                    <option value="efficiency_table">efficiency_table</option>
+                    <option value="information_table">information_table</option>
+                </select>
+            </div>
+            
+            <div id="tableStructure"></div>
+            
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+                <h4>新增欄位</h4>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <input type="text" id="newColumnName" placeholder="欄位名稱" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                    <select id="newColumnType" style="padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="TEXT">TEXT</option>
+                        <option value="INTEGER">INTEGER</option>
+                        <option value="REAL">REAL</option>
+                    </select>
+                    <button class="btn-success btn-small" onclick="addColumn()">新增</button>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="chart-btn" onclick="closeModal('tableManagerModal')">關閉</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全域變數
+        const socket = io();
+        let currentChart = null;
+        let multiChart = null;
+        let selectedRecords = [];
+        let currentUserId = null;
+        
+        // Socket.IO 事件
+        socket.on('connect', function() {
+            console.log('已連接到伺服器');
+        });
+        
+        socket.on('new_data_uploaded', function(data) {
+            showNotification(`新數據上傳：${data.pcb_name} (${data.powerstage_name}) by ${data.user_name}`);
+            loadRecordOptions();
+        });
+        
+        // 頁籤切換
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            if (tabName === 'charts') {
+                loadRecordOptions();
+            }
+        }
+        
+        // 顯示通知
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+        
+        // 上傳表單處理
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const statusDiv = document.getElementById('uploadStatus');
+            
+            statusDiv.innerHTML = '<div class="status-message">⏳ 上傳處理中...</div>';
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    statusDiv.innerHTML = '<div class="status-message status-success">✅ 上傳成功！</div>';
+                    showNotification('數據上傳成功！');
+                    this.reset();
+                    document.querySelector('.file-upload-content').innerHTML = `
+                        📁 點擊選擇 CSV 檔案<br>
+                        <small>支援格式：Istep, Vin, Iin, Vout, remote Vout sense, Iout, Efficiency, Efficiency_remote</small>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `<div class="status-message status-error">❌ 上傳失敗：${result.error}</div>`;
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status-message status-error">❌ 上傳失敗：${error.message}</div>`;
+                showNotification('上傳失敗：網路錯誤', 'error');
+            }
+        });
+        
+        // 檔案選擇處理
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || '未選擇檔案';
+            const label = document.querySelector('.file-upload-content');
+            label.innerHTML = `📁 ${fileName}<br><small>CSV 檔案已選擇</small>`;
+        });
+        
+        // 搜尋記錄
+        async function searchRecords() {
+            const params = new URLSearchParams({
+                powerstage_name: document.getElementById('searchPowerstage').value,
+                phase_count: document.getElementById('searchPhase').value,
+                frequency: document.getElementById('searchFrequency').value,
+                inductor_value: document.getElementById('searchInductor').value,
+                pcb_name: document.getElementById('searchPcb').value
+            });
+            
+            try {
+                const response = await fetch(`/api/search?${params}`);
+                const records = await response.json();
+                displaySearchResults(records);
+            } catch (error) {
+                console.error('搜尋失敗:', error);
+                showNotification('搜尋失敗', 'error');
+            }
+        }
+        
+        // 顯示搜尋結果
+        function displaySearchResults(records) {
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (records.length === 0) {
+                resultsDiv.innerHTML = '<div class="record-item">🔍 沒有找到匹配的記錄</div>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = records.map(record => `
+                <div class="record-item" onclick="selectRecord(${record.user_ID})">
+                    <div class="record-title">${record.pcb_name} - ${record.powerstage_name}</div>
+                    <div class="record-details">
+                        📊 相數: ${record.phase_count} | 🔄 頻率: ${record.frequency}kHz | 
+                        🔌 電感: ${record.inductor_value}nH | 👤 上傳者: ${record.user_name} | 
+                        📅 日期: ${new Date(record.upload_date).toLocaleDateString()}
+                        ${record.notice ? `<br>📝 備註: ${record.notice}` : ''}
+                    </div>
+                    <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${record.user_ID})">
+                        📥 下載原始數據
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        // 選擇記錄
+        function selectRecord(userId) {
+            switchTab('charts');
+            document.getElementById('recordSelector').value = userId;
+            currentUserId = userId;
+            loadSingleChart();
+        }
+        
+        // 載入記錄選項
+        async function loadRecordOptions() {
+            try {
+                const response = await fetch('/api/search');
+                const records = await response.json();
+                
+                const selector = document.getElementById('recordSelector');
+                selector.innerHTML = '<option value="">選擇測試記錄...</option>';
+                
+                records.forEach(record => {
+                    const option = document.createElement('option');
+                    option.value = record.user_ID;
+                    option.textContent = `${record.pcb_name} - ${record.powerstage_name} - ${record.phase_count}相 (${new Date(record.upload_date).toLocaleDateString()})`;
+                    selector.appendChild(option);
+                });
+            } catch (error) {
+                console.error('載入記錄選項失敗:', error);
+            }
+        }
+        
+        // 載入單一圖表
+        async function loadSingleChart() {
+            const userId = document.getElementById('recordSelector').value;
+            if (!userId) {
+                showNotification('請先選擇測試記錄', 'error');
+                return;
+            }
+            
+            currentUserId = userId;
+            
+            try {
+                const response = await fetch(`/api/efficiency-data/${userId}`);
+                const result = await response.json();
+                
+                updateEfficiencyChart(result.data, result.info);
+                
+            } catch (error) {
+                console.error('載入圖表失敗:', error);
+                showNotification('載入圖表失敗', 'error');
+            }
+        }
+        
+        // 更新效率圖表
+        function updateEfficiencyChart(data, info) {
+            const ctx = document.getElementById('efficiencyChart').getContext('2d');
+            
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            const chartTitle = info ? `${info.pcb_name} - ${info.powerstage_name} (${info.phase_count}相)` : '效率曲線';
+            
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.iout),
+                    datasets: [{
+                        label: '效率 (%)',
+                        data: data.map(d => d.efficiency),
+                        borderColor: 'rgb(102, 126, 234)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgb(102, 126, 234)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 10
+                    }, {
+                        label: '遠端感測效率 (%)',
+                        data: data.map(d => d.efficiency_remote),
+                        borderColor: 'rgb(245, 87, 108)',
+                        backgroundColor: 'rgba(245, 87, 108, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgb(245, 87, 108)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: chartTitle,
+                            font: {
+                                size: 20,
+                                weight: 'bold'
+                            },
+                            padding: 20
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: '輸出電流 (A)',
+                                font: {
+                                    size: 16,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: '效率 (%)',
+                                font: {
+                                    size: 16,
+                                    weight: 'bold'
+                                }
+                            },
+                            min: 0,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeInOutQuart'
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+        
+        // 下載 CSV
+        async function downloadCsv(userId) {
+            try {
+                const response = await fetch(`/download/csv/${userId}`);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = response.headers.get('Content-Disposition').split('filename=')[1];
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showNotification('檔案下載完成');
+                } else {
+                    showNotification('下載失敗', 'error');
+                }
+            } catch (error) {
+                console.error('下載失敗:', error);
+                showNotification('下載失敗', 'error');
+            }
+        }
+        
+        // 下載當前數據
+        function downloadCurrentData() {
+            if (!currentUserId) {
+                showNotification('請先選擇測試記錄', 'error');
+                return;
+            }
+            downloadCsv(currentUserId);
+        }
+        
+        // 多組比較搜尋
+        async function showMultiChart() {
+            const powerstage = document.getElementById('searchPowerstage').value;
+            const phase = document.getElementById('searchPhase').value;
+            
+            if (!powerstage && !phase) {
+                showNotification('請至少輸入一個搜尋條件', 'error');
+                return;
+            }
+            
+            try {
+                const params = new URLSearchParams({
+                    powerstage_name: powerstage,
+                    phase_count: phase
+                });
+                
+                const response = await fetch(`/api/multi-search?${params}`);
+                const records = await response.json();
+                
+                if (records.length === 0) {
+                    showNotification('沒有找到符合條件的記錄', 'error');
+                    return;
+                }
+                
+                updateMultiChart(records);
+                showNotification(`載入 ${records.length} 組數據進行比較`);
+                
+            } catch (error) {
+                console.error('載入比較圖表失敗:', error);
+                showNotification('載入比較圖表失敗', 'error');
+            }
+        }
+        
+        // 更新多組比較圖表
+        function updateMultiChart(records) {
+            const ctx = document.getElementById('multiCompareChart').getContext('2d');
+            
+            if (multiChart) {
+                multiChart.destroy();
+            }
+            
+            const colors = [
+                'rgb(102, 126, 234)', 'rgb(245, 87, 108)', 'rgb(67, 233, 123)',
+                'rgb(56, 249, 215)', 'rgb(255, 107, 107)', 'rgb(238, 90, 36)',
+                'rgb(155, 89, 182)', 'rgb(52, 152, 219)', 'rgb(46, 204, 113)'
+            ];
+            
+            const datasets = records.map((record, index) => ({
+                label: `${record.pcb_name} - ${record.powerstage_name}`,
+                data: record.efficiency_data.map(d => ({ x: d.iout, y: d.efficiency })),
+                borderColor: colors[index % colors.length],
+                backgroundColor: colors[index % colors.length] + '20',
+                borderWidth: 3,
+                fill: false,
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 8
+            }));
+            
+            multiChart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '多組效率比較圖',
+                            font: {
+                                size: 20,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            display: true,
+                            title: {
+                                display: true,
+                                text: '輸出電流 (A)',
+                                font: {
+                                    size: 16,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: '效率 (%)',
+                                font: {
+                                    size: 16,
+                                    weight: 'bold'
+                                }
+                            },
+                            min: 0,
+                            max: 100
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeInOutQuart'
+                    }
+                }
+            });
+        }
+        
+        // 清除圖表
+        function clearChart() {
+            if (multiChart) {
+                multiChart.destroy();
+                multiChart = null;
+                showNotification('圖表已清除');
+            }
+        }
+        
+        // 管理者功能
+        function toggleAdmin() {
+            const isAdmin = document.getElementById('adminTab').style.display !== 'none';
+            
+            if (isAdmin) {
+                // 登出管理者
+                adminLogout();
+            } else {
+                // 顯示登入對話框
+                document.getElementById('adminLoginModal').style.display = 'block';
+            }
+        }
+        
+        async function adminLogin() {
+            const password = document.getElementById('adminPassword').value;
+            
+            try {
+                const response = await fetch('/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('adminTab').style.display = 'block';
+                    document.getElementById('adminToggle').textContent = '管理者登出';
+                    document.getElementById('adminToggle').style.background = 'linear-gradient(45deg, #43e97b, #38f9d7)';
+                    closeModal('adminLoginModal');
+                    showNotification('管理者登入成功');
+                } else {
+                    showNotification('密碼錯誤', 'error');
+                }
+            } catch (error) {
+                showNotification('登入失敗', 'error');
+            }
+        }
+        
+        async function adminLogout() {
+            try {
+                await fetch('/admin/logout', { method: 'POST' });
+                document.getElementById('adminTab').style.display = 'none';
+                document.getElementById('adminToggle').textContent = '管理者登入';
+                document.getElementById('adminToggle').style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a24)';
+                showNotification('已登出管理者模式');
+                
+                // 如果在管理者頁面，切換到上傳頁面
+                if (document.getElementById('admin').classList.contains('active')) {
+                    switchTab('upload');
+                }
+            } catch (error) {
+                console.error('登出失敗:', error);
+            }
+        }
+        
+        // 備份資料庫
+        async function backupDatabase() {
+            try {
+                const response = await fetch('/admin/backup');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = response.headers.get('Content-Disposition').split('filename=')[1];
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showNotification('資料庫備份下載完成');
+                } else {
+                    showNotification('備份失敗', 'error');
+                }
+            } catch (error) {
+                console.error('備份失敗:', error);
+                showNotification('備份失敗', 'error');
+            }
+        }
+        
+        // 還原資料庫
+        async function restoreDatabase() {
+            const fileInput = document.getElementById('restoreFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showNotification('請選擇備份檔案', 'error');
+                return;
+            }
+            
+            if (!confirm('確定要還原資料庫嗎？此操作將覆蓋現有數據！')) {
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/admin/restore', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('資料庫還原成功');
+                    fileInput.value = '';
+                    loadRecordOptions();
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('還原失敗:', error);
+                showNotification('還原失敗', 'error');
+            }
+        }
+        
+        // 顯示資料表管理器
+        function showTableManager() {
+            document.getElementById('tableManagerModal').style.display = 'block';
+        }
+        
+        // 載入資料表結構
+        async function loadTableStructure() {
+            const tableName = document.getElementById('tableSelector').value;
+            if (!tableName) return;
+            
+            try {
+                const response = await fetch(`/admin/table-structure/${tableName}`);
+                const columns = await response.json();
+                
+                const structureDiv = document.getElementById('tableStructure');
+                structureDiv.innerHTML = `
+                    <div class="table-structure">
+                        <h4>${tableName} 欄位結構</h4>
+                        ${columns.map(col => `
+                            <div class="column-item">
+                                <div class="column-info">
+                                    <span class="column-name">${col.name}</span>
+                                    <span class="column-type">${col.type}</span>
+                                    ${col.pk ? '<span style="color: #dc3545; font-size: 12px;">[主鍵]</span>' : ''}
+                                    ${col.notnull ? '<span style="color: #28a745; font-size: 12px;">[必填]</span>' : ''}
+                                </div>
+                                ${!col.pk ? `<button class="btn-danger btn-small" onclick="removeColumn('${tableName}', '${col.name}')">刪除</button>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('載入資料表結構失敗:', error);
+                showNotification('載入資料表結構失敗', 'error');
+            }
+        }
+        
+        // 新增欄位
+        async function addColumn() {
+            const tableName = document.getElementById('tableSelector').value;
+            const columnName = document.getElementById('newColumnName').value;
+            const columnType = document.getElementById('newColumnType').value;
+            
+            if (!tableName || !columnName) {
+                showNotification('請填寫完整資訊', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/add-column', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        table_name: tableName,
+                        column_name: columnName,
+                        column_type: columnType
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    document.getElementById('newColumnName').value = '';
+                    loadTableStructure(); // 重新載入結構
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('新增欄位失敗:', error);
+                showNotification('新增欄位失敗', 'error');
+            }
+        }
+        
+        // 刪除欄位
+        async function removeColumn(tableName, columnName) {
+            if (!confirm(`確定要刪除欄位 "${columnName}" 嗎？此操作無法復原！`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/remove-column', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        table_name: tableName,
+                        column_name: columnName
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    loadTableStructure(); // 重新載入結構
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('刪除欄位失敗:', error);
+                showNotification('刪除欄位失敗', 'error');
+            }
+        }
+        
+        // 模態框控制
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            if (modalId === 'adminLoginModal') {
+                document.getElementById('adminPassword').value = '';
+            }
+        }
+        
+        // 點擊模態框外部關閉
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+        
+        // Enter 鍵支援
+        document.getElementById('adminPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                adminLogin();
+            }
+        });
+        
+        // 搜尋輸入框 Enter 鍵支援
+        document.querySelectorAll('#search input').forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchRecords();
+                }
+            });
+        });
+        
+        // 頁面載入完成初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRecordOptions();
+            
+            // 檢查是否已經是管理者
+            fetch('/admin/backup')
+                .then(response => {
+                    if (response.ok || response.status === 200) {
+                        // 已經是管理者
+                        document.getElementById('adminTab').style.display = 'block';
+                        document.getElementById('adminToggle').textContent = '管理者登出';
+                        document.getElementById('adminToggle').style.background = 'linear-gradient(45deg, #43e97b, #38f9d7)';
+                    }
+                })
+                .catch(() => {
+                    // 不是管理者，忽略錯誤
+                });
+        });
+    </script>
+</body>
+</html>
+                

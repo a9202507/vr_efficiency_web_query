@@ -1,0 +1,293 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  vr-efficiency-system:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - vr_data:/app/data
+      - ./uploads:/app/uploads
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=vr-efficiency-system-secret-2024
+      - ADMIN_PASSWORD=VR_Admin_2024!  # 請修改此密碼
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - vr_network
+
+volumes:
+  vr_data:
+    driver: local
+
+networks:
+  vr_network:
+    driver: bridge
+
+---
+
+# Dockerfile
+FROM python:3.11-slim
+
+# 設置工作目錄
+WORKDIR /app
+
+# 安裝系統依賴
+RUN apt-get update && apt-get install -y \
+    curl \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# 複製需求檔案
+COPY requirements.txt .
+
+# 安裝 Python 依賴
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 複製應用程式碼
+COPY app.py .
+COPY templates/ ./templates/
+
+# 創建必要目錄
+RUN mkdir -p data uploads templates
+
+# 設置權限
+RUN chmod +x app.py
+
+# 建立非 root 使用者
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# 暴露端口
+EXPOSE 5000
+
+# 健康檢查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5000/ || exit 1
+
+# 啟動命令
+CMD ["python", "app.py"]
+
+---
+
+# requirements.txt
+Flask==3.0.0
+Flask-SocketIO==5.3.6
+pandas==2.1.4
+python-socketio==5.10.0
+eventlet==0.33.3
+gunicorn==21.2.0
+
+---
+
+# .dockerignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.env
+.venv/
+venv/
+ENV/
+.git/
+.gitignore
+*.md
+.DS_Store
+node_modules/
+npm-debug.log
+.pytest_cache/
+.coverage
+htmlcov/
+.nyc_output/
+coverage/
+dist/
+build/
+*.egg-info/
+data/
+uploads/
+
+---
+
+# README.md - 部署說明
+# VR實測效率查詢系統
+
+## 快速啟動
+
+### 1. 克隆或下載專案
+```bash
+git clone <repository-url>
+cd vr-efficiency-system
+```
+
+### 2. 使用 Docker Compose 啟動
+```bash
+# 直接啟動
+docker-compose up -d
+
+# 或者建構並啟動
+docker-compose up --build -d
+```
+
+### 3. 訪問系統
+- 網址：http://localhost:5000
+- 管理者密碼：VR_Admin_2024! (請在生產環境修改)
+
+## 目錄結構
+```
+vr-efficiency-system/
+├── app.py                 # Flask 主應用
+├── docker-compose.yml     # Docker Compose 配置
+├── Dockerfile            # Docker 映像配置
+├── requirements.txt      # Python 依賴
+├── templates/           
+│   └── index.html        # 前端頁面
+├── data/                 # SQLite 資料庫目錄 (自動創建)
+└── uploads/             # 檔案上傳目錄 (自動創建)
+```
+
+## 功能特色
+
+### 一般用戶功能
+- ✅ CSV 測試數據上傳
+- ✅ 多條件搜尋 (Power Stage、相數、頻率等)
+- ✅ 即時效率曲線圖表顯示
+- ✅ 多組數據比較圖表
+- ✅ 原始 CSV 數據下載
+- ✅ 即時通知新上傳數據
+
+### 管理者功能
+- ✅ 密碼登入驗證
+- ✅ 資料庫備份下載 (含時間戳記)
+- ✅ 資料庫還原功能
+- ✅ 動態新增/刪除資料表欄位
+- ✅ 系統管理介面
+
+### 技術特點
+- ✅ 響應式網頁設計
+- ✅ WebSocket 即時通訊
+- ✅ SQLite 資料庫持久化
+- ✅ Docker 容器化部署
+- ✅ Chart.js 互動式圖表
+- ✅ 支援 10+ 並發用戶
+
+## 資料庫結構
+
+### information_table
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| user_ID | INTEGER | 主鍵 (自動遞增) |
+| user_name | TEXT | 使用者名稱 |
+| pcb_name | TEXT | PCB 名稱 |
+| powerstage_name | TEXT | Power Stage 名稱 |
+| phase_count | INTEGER | 相數 |
+| frequency | INTEGER | 頻率 (kHz) |
+| inductor_value | INTEGER | 電感值 (nH) |
+| tlvr | INTEGER | TLVR 規格 |
+| imax | INTEGER | 最大電流 (A) |
+| upload_date | TEXT | 上傳日期 |
+| notice | TEXT | 備註 |
+
+### efficiency_table
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| series_number | INTEGER | 主鍵 (自動遞增) |
+| istep | REAL | 電流步階 |
+| vin | REAL | 輸入電壓 |
+| iin | REAL | 輸入電流 |
+| vout | REAL | 輸出電壓 |
+| remote_vout_sense | REAL | 遠端電壓感測 |
+| iout | REAL | 輸出電流 |
+| efficiency | REAL | 效率 |
+| efficiency_remote | REAL | 遠端感測效率 |
+| user_id | INTEGER | 關聯 information_table |
+
+## CSV 檔案格式要求
+```csv
+Istep,Vin,Iin,Vout,remote Vout sense,Iout,Efficiency,Efficiency_remote
+0,12.000255,0.1467,1.15311,1.1529668,0.06375,4.176,4.175
+3.2,11.999653,0.4555,1.1528496,1.1527845,3.20625,67.626,67.622
+...
+```
+
+## 生產環境部署注意事項
+
+### 1. 安全設定
+```bash
+# 修改管理者密碼
+export ADMIN_PASSWORD="your-strong-password"
+
+# 修改 Flask 密鑰
+export SECRET_KEY="your-secret-key"
+```
+
+### 2. 反向代理 (Nginx 範例)
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+    
+    location /socket.io/ {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+### 3. 備份策略
+```bash
+# 手動備份
+docker-compose exec vr-efficiency-system cp /app/data/vr_efficiency.sqlite /app/data/backup_$(date +%Y%m%d_%H%M%S).sqlite
+
+# 定期自動備份 (crontab)
+0 2 * * * docker-compose -f /path/to/docker-compose.yml exec vr-efficiency-system cp /app/data/vr_efficiency.sqlite /app/data/daily_backup_$(date +\%Y\%m\%d).sqlite
+```
+
+## 故障排除
+
+### 常見問題
+1. **端口已被佔用**：修改 docker-compose.yml 中的端口映射
+2. **權限問題**：確保 data/ 目錄有寫入權限
+3. **記憶體不足**：增加 Docker 記憶體限制
+
+### 日誌查看
+```bash
+# 查看應用日誌
+docker-compose logs -f vr-efficiency-system
+
+# 查看即時日誌
+docker-compose logs --tail=100 -f
+```
+
+## 維護指令
+
+```bash
+# 停止服務
+docker-compose down
+
+# 重新建構並啟動
+docker-compose up --build -d
+
+# 清理舊映像
+docker system prune -f
+
+# 進入容器
+docker-compose exec vr-efficiency-system bash
+```

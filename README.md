@@ -21,6 +21,7 @@
         |data type|int|str|str|str|int|int|int|int|int|TEXT|str|
 
 4. 功能需求
+    * 介面語言可以切換正體中文或是英文
     * 一般用戶:
         * 可透過前端介面上傳.csv到efficiency_table，在上傳的同時，需同步建立infomration_table
         * 可以多條件搜尋出各別efficiency_table的資料，例如找出所有powerstage_name= TDA22594A 以及6phase的efficinecy_table，並且同步畫面效率曲線在前端介面上。
