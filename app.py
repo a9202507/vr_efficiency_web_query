@@ -103,11 +103,20 @@ def admin_logout():
 def upload_file():
     if 'file' not in request.files:
         return jsonify({'error': '沒有檔案'}), 400
-    
+
     file = request.files['file']
-    if file.filename == '' or not file.filename.endswith('.csv'):
-        return jsonify({'error': '請選擇 CSV 檔案'}), 400
-    
+    if file.filename == '':
+        return jsonify({'error': '請選擇檔案'}), 400
+
+    # 檢查檔案類型
+    if file.filename.endswith('.csv'):
+        file_content = file.read().decode('utf-8')
+        df = pd.read_csv(io.StringIO(file_content))
+    elif file.filename.endswith(('.xlsx', '.xls')):
+        df = pd.read_excel(file)
+    else:
+        return jsonify({'error': '不支援的檔案格式，請上傳 CSV 或 Excel 檔案'}), 400
+
     # 獲取 information_table 資料
     info_data = {
         'user_name': request.form.get('user_name'),
@@ -121,22 +130,18 @@ def upload_file():
         'upload_date': datetime.now().isoformat(),
         'notice': request.form.get('notice', '')
     }
-    
+
     try:
-        # 讀取並驗證 CSV 檔案
-        csv_content = file.read().decode('utf-8')
-        df = pd.read_csv(io.StringIO(csv_content))
-        
         # 驗證必要欄位
         required_columns = ['Istep', 'Vin', 'Iin', 'Vout', 'remote Vout sense', 'Iout', 'Efficiency', 'Efficiency_remote']
         missing_columns = [col for col in required_columns if col not in df.columns]
-        
+
         if missing_columns:
             return jsonify({'error': f'缺少必要欄位: {", ".join(missing_columns)}'}), 400
-        
+
         conn = sqlite3.connect('data/vr_efficiency.sqlite')
         cursor = conn.cursor()
-        
+
         # 插入 information_table
         cursor.execute('''
             INSERT INTO information_table 
@@ -146,9 +151,9 @@ def upload_file():
         ''', (info_data['user_name'], info_data['pcb_name'], info_data['powerstage_name'],
               info_data['phase_count'], info_data['frequency'], info_data['inductor_value'],
               info_data['tlvr'], info_data['imax'], info_data['upload_date'], info_data['notice']))
-        
+
         user_id = cursor.lastrowid
-        
+
         # 插入 efficiency_table
         for _, row in df.iterrows():
             cursor.execute('''
@@ -158,10 +163,10 @@ def upload_file():
             ''', (row['Istep'], row['Vin'], row['Iin'], row['Vout'],
                   row['remote Vout sense'], row['Iout'], row['Efficiency'], 
                   row['Efficiency_remote'], user_id))
-        
+
         conn.commit()
         conn.close()
-        
+
         # 即時通知所有客戶端
         socketio.emit('new_data_uploaded', {
             'user_id': user_id,
@@ -169,9 +174,9 @@ def upload_file():
             'user_name': info_data['user_name'],
             'powerstage_name': info_data['powerstage_name']
         })
-        
+
         return jsonify({'success': True, 'user_id': user_id})
-        
+
     except Exception as e:
         return jsonify({'error': f'處理檔案時發生錯誤: {str(e)}'}), 500
 
