@@ -30,7 +30,7 @@ def admin_required(f):
 def init_db():
     conn = sqlite3.connect('data/vr_efficiency.sqlite')
     cursor = conn.cursor()
-    
+
     # information_table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS information_table (
@@ -41,13 +41,14 @@ def init_db():
             phase_count INTEGER NOT NULL,
             frequency INTEGER NOT NULL,
             inductor_value INTEGER NOT NULL,
-            tlvr INTEGER,
+            tlvr TEXT,
             imax INTEGER NOT NULL,
             upload_date TEXT DEFAULT CURRENT_TIMESTAMP,
-            notice TEXT
+            notice TEXT,
+            series_number INTEGER UNIQUE
         )
     ''')
-    
+
     # efficiency_table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS efficiency_table (
@@ -64,12 +65,12 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES information_table(user_ID)
         )
     ''')
-    
+
     # 建立索引以提升查詢效能
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_powerstage ON information_table(powerstage_name)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_phase ON information_table(phase_count)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_id ON efficiency_table(user_id)')
-    
+
     conn.commit()
     conn.close()
 
@@ -125,7 +126,7 @@ def upload_file():
         'phase_count': int(request.form.get('phase_count')),
         'frequency': int(request.form.get('frequency')),
         'inductor_value': int(request.form.get('inductor_value')),
-        'tlvr': int(request.form.get('tlvr')) if request.form.get('tlvr') else None,
+        'tlvr': request.form.get('tlvr'),
         'imax': int(request.form.get('imax')),
         'upload_date': datetime.now().isoformat(),
         'notice': request.form.get('notice', '')
@@ -154,7 +155,8 @@ def upload_file():
 
         user_id = cursor.lastrowid
 
-        # 插入 efficiency_table
+        # 插入 efficiency_table 並獲取 series_number
+        series_number = None
         for _, row in df.iterrows():
             cursor.execute('''
                 INSERT INTO efficiency_table 
@@ -163,6 +165,16 @@ def upload_file():
             ''', (row['Istep'], row['Vin'], row['Iin'], row['Vout'],
                   row['remote Vout sense'], row['Iout'], row['Efficiency'], 
                   row['Efficiency_remote'], user_id))
+
+            if series_number is None:
+                series_number = cursor.lastrowid
+
+        # 更新 information_table 的 series_number
+        cursor.execute('''
+            UPDATE information_table
+            SET series_number = ?
+            WHERE user_ID = ?
+        ''', (series_number, user_id))
 
         conn.commit()
         conn.close()
@@ -175,7 +187,7 @@ def upload_file():
             'powerstage_name': info_data['powerstage_name']
         })
 
-        return jsonify({'success': True, 'user_id': user_id})
+        return jsonify({'success': True, 'user_id': user_id, 'series_number': series_number})
 
     except Exception as e:
         return jsonify({'error': f'處理檔案時發生錯誤: {str(e)}'}), 500
@@ -413,6 +425,31 @@ def remove_column():
     except Exception as e:
         return jsonify({'error': f'刪除欄位失敗: {str(e)}'}), 500
 
+@app.route('/admin/delete-record/<int:series_number>', methods=['DELETE'])
+@admin_required
+def delete_record_by_series_number(series_number):
+    try:
+        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        cursor = conn.cursor()
+
+        # 刪除 efficiency_table 中的資料
+        cursor.execute('DELETE FROM efficiency_table WHERE series_number = ?', (series_number,))
+
+        # 檢查是否有對應的資料被刪除
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'No record found with the given Series Number'}), 404
+
+        # 刪除 information_table 中的資料
+        cursor.execute('DELETE FROM information_table WHERE series_number = ?', (series_number,))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Record deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': f'Failed to delete record: {str(e)}'}), 500
+
 @app.route('/api/multi-search')
 def multi_search():
     """多條件搜尋並返回效率數據"""
@@ -472,6 +509,21 @@ def multi_search():
     
     conn.close()
     return jsonify(records)
+
+@app.route('/api/series-numbers', methods=['GET'])
+def get_series_numbers():
+    try:
+        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        cursor = conn.cursor()
+
+        # 只回傳 information_table 中的 series_number
+        cursor.execute('SELECT series_number FROM information_table WHERE series_number IS NOT NULL')
+        series_numbers = [row[0] for row in cursor.fetchall()]
+
+        conn.close()
+        return jsonify(series_numbers)
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch series numbers: {str(e)}'}), 500
 
 # WebSocket 事件處理
 @socketio.on('connect')

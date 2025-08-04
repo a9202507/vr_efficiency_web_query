@@ -725,6 +725,15 @@
                 Manage Tables
               </button>
             </div>
+
+            <div class="admin-card">
+              <h3>🗑️ Delete Record by Series Number</h3>
+              <p>Select the Series Number of the record to delete</p>
+              <select id="deleteSeriesNumber" style="margin: 10px 0; padding: 10px; border-radius: 8px; border: 1px solid #ddd; width: 100%;">
+                <!-- Options will be dynamically populated -->
+              </select>
+              <button class="btn-danger" onclick="deleteRecordBySeriesNumber()">Delete Record</button>
+            </div>
           </div>
         </div>
       </div>
@@ -943,40 +952,31 @@
         const resultsDiv = document.getElementById("searchResults");
 
         if (records.length === 0) {
-          resultsDiv.innerHTML =
-            '<div class="record-item">🔍 沒有找到匹配的記錄</div>';
+          resultsDiv.innerHTML = '<div class="record-item">🔍 No matching records found</div>';
           return;
         }
 
         resultsDiv.innerHTML = records
-          .map(
-            (record) => `
-                <div class="record-item" onclick="selectRecord(${
-                  record.user_ID
-                })">
-                    <div class="record-title">${record.pcb_name} - ${
-              record.powerstage_name
-            }</div>
+          .map((record, index) => {
+            const efficiencyData = record.efficiency_data || [];
+            const maxEfficiency = efficiencyData.length > 0 ? Math.max(...efficiencyData.map(d => d.efficiency)) : "N/A";
+            const fullLoadEfficiency = efficiencyData.length > 0 ? efficiencyData[efficiencyData.length - 1]?.efficiency || "N/A" : "N/A";
+
+            return `
+                <div class="record-item">
+                    <div class="record-title">${index + 1}. ${record.pcb_name} - ${record.powerstage_name} (Series Number: ${record.series_number})</div>
                     <div class="record-details">
-                        📊 相數: ${record.phase_count} | 🔄 頻率: ${
-              record.frequency
-            }kHz | 
-                        🔌 電感: ${record.inductor_value}nH | 👤 上傳者: ${
-              record.user_name
-            } | 
-                        📅 日期: ${new Date(
-                          record.upload_date
-                        ).toLocaleDateString()}
-                        ${record.notice ? `<br>📝 備註: ${record.notice}` : ""}
+                        📊 Phases: ${record.phase_count} | 🔄 Frequency: ${record.frequency} kHz | 
+                        🔌 Inductor: ${record.inductor_value} nH | 👤 Uploaded by: ${record.user_name} | 
+                        📅 Date: ${new Date(record.upload_date).toLocaleDateString()}<br>
+                        🏆 Max Efficiency: ${maxEfficiency !== "N/A" ? maxEfficiency.toFixed(2) : "N/A"}% | ⚡ Full Load Efficiency: ${fullLoadEfficiency !== "N/A" ? fullLoadEfficiency.toFixed(2) : "N/A"}%
                     </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${
-                      record.user_ID
-                    })">
-                        📥 下載原始數據
+                    <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${record.user_id})">
+                        📥 Download Raw Data
                     </button>
                 </div>
-            `
-          )
+            `;
+          })
           .join("");
       }
 
@@ -1616,6 +1616,61 @@
             // 不是管理者，忽略錯誤
           });
       });
+
+      // 刪除特定資料
+      async function deleteRecordBySeriesNumber() {
+        const seriesNumber = document.getElementById("deleteSeriesNumber").value;
+
+        if (!seriesNumber) {
+          alert("請選擇 Series Number");
+          return;
+        }
+
+        if (!confirm(`確定要刪除 Series Number 為 ${seriesNumber} 的記錄嗎？此操作無法復原。`)) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`/admin/delete-record/${seriesNumber}`, {
+            method: "DELETE",
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            alert("記錄刪除成功");
+            // 重新載入 Series Number 選項
+            populateSeriesNumbers();
+          } else {
+            alert(`刪除記錄失敗：${result.error}`);
+          }
+        } catch (error) {
+          alert("刪除記錄時發生錯誤");
+        }
+      }
+
+      // 載入 Series Number 選項
+      async function populateSeriesNumbers() {
+        try {
+          const response = await fetch('/api/series-numbers');
+          const seriesNumbers = await response.json();
+
+          const select = document.getElementById('deleteSeriesNumber');
+          select.innerHTML = '<option value="">Select Series Number...</option>';
+
+          seriesNumbers.forEach(number => {
+              const option = document.createElement('option');
+              option.value = number;
+              option.textContent = number;
+              select.appendChild(option);
+          });
+        } catch (error) {
+          console.error('Failed to load series numbers:', error);
+        }
+      }
+
+      // Populate series numbers on page load
+      populateSeriesNumbers();
     </script>
   </body>
 </html>
