@@ -226,9 +226,28 @@ def search_records():
     query += " ORDER BY upload_date DESC"
     
     cursor = conn.execute(query, params)
-    records = [dict(row) for row in cursor.fetchall()]
+    records = []
+    for row in cursor.fetchall():
+        record = dict(row)
+        # 查詢 efficiency_table 效率數據
+        eff_cursor = conn.execute('''
+            SELECT iout, efficiency, efficiency_remote, vin, vout
+            FROM efficiency_table 
+            WHERE user_id = ? 
+            ORDER BY iout
+        ''', (row['user_ID'],))
+        efficiency_data = []
+        for eff_row in eff_cursor.fetchall():
+            efficiency_data.append({
+                'iout': eff_row[0],
+                'efficiency': eff_row[1],
+                'efficiency_remote': eff_row[2],
+                'vin': eff_row[3],
+                'vout': eff_row[4]
+            })
+        record['efficiency_data'] = efficiency_data
+        records.append(record)
     conn.close()
-    
     return jsonify(records)
 
 @app.route('/api/efficiency-data/<int:user_id>')

@@ -961,6 +961,8 @@
             const efficiencyData = record.efficiency_data || [];
             const maxEfficiency = efficiencyData.length > 0 ? Math.max(...efficiencyData.map(d => d.efficiency)) : "N/A";
             const fullLoadEfficiency = efficiencyData.length > 0 ? efficiencyData[efficiencyData.length - 1]?.efficiency || "N/A" : "N/A";
+            const firstVin = efficiencyData.length > 0 && efficiencyData[0].vin !== undefined ? efficiencyData[0].vin : "N/A";
+            const firstVout = efficiencyData.length > 0 && efficiencyData[0].vout !== undefined ? efficiencyData[0].vout : "N/A";
 
             return `
                 <div class="record-item">
@@ -969,6 +971,7 @@
                         📊 Phases: ${record.phase_count} | 🔄 Frequency: ${record.frequency} kHz | 
                         🔌 Inductor: ${record.inductor_value} nH | 👤 Uploaded by: ${record.user_name} | 
                         📅 Date: ${new Date(record.upload_date).toLocaleDateString()}<br>
+                        🔋 Vin: ${firstVin} | ⚡ Vout: ${firstVout}<br>
                         🏆 Max Efficiency: ${maxEfficiency !== "N/A" ? maxEfficiency.toFixed(2) : "N/A"}% | ⚡ Full Load Efficiency: ${fullLoadEfficiency !== "N/A" ? fullLoadEfficiency.toFixed(2) : "N/A"}%
                     </div>
                     <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${record.series_number})">
