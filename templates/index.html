@@ -971,7 +971,7 @@
                         📅 Date: ${new Date(record.upload_date).toLocaleDateString()}<br>
                         🏆 Max Efficiency: ${maxEfficiency !== "N/A" ? maxEfficiency.toFixed(2) : "N/A"}% | ⚡ Full Load Efficiency: ${fullLoadEfficiency !== "N/A" ? fullLoadEfficiency.toFixed(2) : "N/A"}%
                     </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${record.user_id})">
+                    <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${record.series_number})">
                         📥 Download Raw Data
                     </button>
                 </div>
@@ -1146,9 +1146,9 @@
       }
 
       // 下載 CSV
-      async function downloadCsv(userId) {
+      async function downloadCsv(seriesNumber) {
         try {
-          const response = await fetch(`/download/csv/${userId}`);
+          const response = await fetch(`/download/csv/${seriesNumber}`);
           if (response.ok) {
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);

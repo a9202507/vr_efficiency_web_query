@@ -1,5 +1,5 @@
 # app.py - VR實測效率查詢系統
-from flask import Flask, request, jsonify, render_template, send_file, session, abort, redirect, url_for
+from flask import Flask, request, jsonify, render_template, send_file, session, abort, redirect, url_for, make_response
 from flask_socketio import SocketIO, emit
 import sqlite3
 import pandas as pd
@@ -265,48 +265,62 @@ def get_efficiency_data(user_id):
     conn.close()
     return jsonify({'data': data, 'info': info})
 
-@app.route('/download/csv/<int:user_id>')
-def download_csv(user_id):
-    conn = sqlite3.connect('data/vr_efficiency.sqlite')
-    
-    # 獲取資訊
-    cursor = conn.execute('SELECT * FROM information_table WHERE user_ID = ?', (user_id,))
-    info = cursor.fetchone()
-    
-    if not info:
-        abort(404)
-    
-    # 獲取效率數據
-    cursor = conn.execute('''
-        SELECT istep, vin, iin, vout, remote_vout_sense, iout, efficiency, efficiency_remote
-        FROM efficiency_table WHERE user_id = ? ORDER BY iout
-    ''', (user_id,))
-    
-    efficiency_data = cursor.fetchall()
-    conn.close()
-    
-    # 創建 CSV
-    output = io.StringIO()
-    writer = csv.writer(output)
-    
-    # 寫入標頭
-    writer.writerow(['Istep', 'Vin', 'Iin', 'Vout', 'remote Vout sense', 'Iout', 'Efficiency', 'Efficiency_remote'])
-    
-    # 寫入資料
-    for row in efficiency_data:
-        writer.writerow(row)
-    
-    # 準備下載
-    csv_data = output.getvalue()
-    output.close()
-    
-    filename = f"{info[2]}_{info[3]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    
-    return app.response_class(
-        csv_data,
-        mimetype='text/csv',
-        headers={'Content-Disposition': f'attachment; filename={filename}'}
-    )
+@app.route('/download/csv/<int:series_number>')
+def download_csv(series_number):
+    try:
+        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        cursor = conn.cursor()
+
+        # 取得 efficiency_table 資料
+        cursor.execute('SELECT * FROM efficiency_table WHERE series_number = ?', (series_number,))
+        rows = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+
+        # 取得 information_table 資料
+        cursor.execute('SELECT pcb_name, powerstage_name, phase_count, frequency, inductor_value, imax, upload_date FROM information_table WHERE series_number = ?', (series_number,))
+        info = cursor.fetchone()
+        conn.close()
+
+        if not rows or not info:
+            return jsonify({'error': 'No data found'}), 404
+
+        pcb_name, powerstage_name, phase_count, frequency, inductor_value, imax, upload_date = info
+        # 處理 upload_date 格式
+        if not upload_date or str(upload_date).lower() == 'none' or str(upload_date).lower() == 'nan':
+            date_str = 'unknown'
+        else:
+            try:
+                date_raw = str(upload_date)
+                if ' ' in date_raw:
+                    date_part, time_part = date_raw.split(' ')
+                else:
+                    date_part, time_part = date_raw, '00:00:00'
+                # 支援 YYYY-MM-DD 或 YYYY/MM/DD
+                if '-' in date_part:
+                    dt = datetime.strptime(date_part, "%Y-%m-%d")
+                elif '/' in date_part:
+                    dt = datetime.strptime(date_part, "%Y/%m/%d")
+                else:
+                    dt = None
+                hm = time_part[:5].replace(':', '')  # 取 hhmm
+                date_str = dt.strftime("%Y%m%d") + "-" + hm if dt else 'unknown'
+            except Exception:
+                date_str = 'unknown'
+        filename = f"{pcb_name}_{powerstage_name}_{phase_count}ph_{frequency}khz_{inductor_value}nH_{imax}Amps_{date_str}.csv"
+
+        # 產生 CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(columns)
+        writer.writerows(rows)
+        output.seek(0)
+
+        response = make_response(output.getvalue())
+        response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+        response.headers["Content-type"] = "text/csv"
+        return response
+    except Exception as e:
+        return jsonify({'error': f'Failed to download CSV: {str(e)}'}), 500
 
 @app.route('/admin/backup')
 @admin_required
