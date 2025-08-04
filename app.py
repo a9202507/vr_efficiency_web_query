@@ -289,20 +289,21 @@ def download_csv(series_number):
     try:
         conn = sqlite3.connect('data/vr_efficiency.sqlite')
         cursor = conn.cursor()
-
         # 取得 efficiency_table 資料
         cursor.execute('SELECT * FROM efficiency_table WHERE series_number = ?', (series_number,))
         rows = cursor.fetchall()
         columns = [desc[0] for desc in cursor.description]
-
         # 取得 information_table 資料
         cursor.execute('SELECT pcb_name, powerstage_name, phase_count, frequency, inductor_value, imax, upload_date FROM information_table WHERE series_number = ?', (series_number,))
         info = cursor.fetchone()
+        # 取得第一筆 vin/vout
+        vin, vout = None, None
+        if rows:
+            vin = rows[0][2] if len(rows[0]) > 2 else None
+            vout = rows[0][4] if len(rows[0]) > 4 else None
         conn.close()
-
         if not rows or not info:
             return jsonify({'error': 'No data found'}), 404
-
         pcb_name, powerstage_name, phase_count, frequency, inductor_value, imax, upload_date = info
         # 處理 upload_date 格式
         if not upload_date or str(upload_date).lower() == 'none' or str(upload_date).lower() == 'nan':
@@ -314,18 +315,19 @@ def download_csv(series_number):
                     date_part, time_part = date_raw.split(' ')
                 else:
                     date_part, time_part = date_raw, '00:00:00'
-                # 支援 YYYY-MM-DD 或 YYYY/MM/DD
                 if '-' in date_part:
                     dt = datetime.strptime(date_part, "%Y-%m-%d")
                 elif '/' in date_part:
                     dt = datetime.strptime(date_part, "%Y/%m/%d")
                 else:
                     dt = None
-                hm = time_part[:5].replace(':', '')  # 取 hhmm
+                hm = time_part[:5].replace(':', '')
                 date_str = dt.strftime("%Y%m%d") + "-" + hm if dt else 'unknown'
             except Exception:
                 date_str = 'unknown'
-        filename = f"{pcb_name}_{powerstage_name}_{phase_count}ph_{frequency}khz_{inductor_value}nH_{imax}Amps_{date_str}.csv"
+        vin_str = f"{vin}vin" if vin is not None else "NA"
+        vout_str = f"{vout}vout" if vout is not None else "NA"
+        filename = f"{pcb_name}_{vin_str}_{vout_str}_{powerstage_name}_{phase_count}ph_{frequency}khz_{inductor_value}nH_{imax}Amps_{date_str}.csv"
 
         # 產生 CSV
         output = io.StringIO()
@@ -485,61 +487,85 @@ def delete_record_by_series_number(series_number):
 
 @app.route('/api/multi-search')
 def multi_search():
-    """多條件搜尋並返回效率數據"""
+    series_numbers = request.args.get('series_numbers')
     powerstage_name = request.args.get('powerstage_name')
     phase_count = request.args.get('phase_count')
-    
     conn = sqlite3.connect('data/vr_efficiency.sqlite')
-    
-    # 搜尋符合條件的記錄
-    query = '''
-        SELECT i.user_ID, i.pcb_name, i.powerstage_name, i.phase_count, i.frequency,
-               i.inductor_value, i.upload_date
-        FROM information_table i
-        WHERE 1=1
-    '''
-    params = []
-    
-    if powerstage_name:
-        query += " AND i.powerstage_name LIKE ?"
-        params.append(f"%{powerstage_name}%")
-    if phase_count:
-        query += " AND i.phase_count = ?"
-        params.append(int(phase_count))
-    
-    cursor = conn.execute(query, params)
     records = []
-    
-    for row in cursor.fetchall():
-        user_id = row[0]
-        
-        # 獲取對應的效率數據
-        eff_cursor = conn.execute('''
-            SELECT iout, efficiency, efficiency_remote 
-            FROM efficiency_table 
-            WHERE user_id = ? 
-            ORDER BY iout
-        ''', (user_id,))
-        
-        efficiency_data = []
-        for eff_row in eff_cursor.fetchall():
-            efficiency_data.append({
-                'iout': eff_row[0],
-                'efficiency': eff_row[1],
-                'efficiency_remote': eff_row[2]
+    if series_numbers:
+        sn_list = [int(s) for s in series_numbers.split(',') if s.strip().isdigit()]
+        for sn in sn_list:
+            info_cursor = conn.execute('SELECT user_ID, pcb_name, powerstage_name, phase_count, frequency, inductor_value, upload_date FROM information_table WHERE series_number = ?', (sn,))
+            info_row = info_cursor.fetchone()
+            if info_row:
+                user_id = info_row[0]
+                eff_cursor = conn.execute('''
+                    SELECT iout, efficiency, efficiency_remote, vin, vout
+                    FROM efficiency_table
+                    WHERE user_id = ?
+                    ORDER BY iout
+                ''', (user_id,))
+                efficiency_data = []
+                for eff_row in eff_cursor.fetchall():
+                    efficiency_data.append({
+                        'iout': eff_row[0],
+                        'efficiency': eff_row[1],
+                        'efficiency_remote': eff_row[2],
+                        'vin': eff_row[3],
+                        'vout': eff_row[4]
+                    })
+                records.append({
+                    'user_id': user_id,
+                    'pcb_name': info_row[1],
+                    'powerstage_name': info_row[2],
+                    'phase_count': info_row[3],
+                    'frequency': info_row[4],
+                    'inductor_value': info_row[5],
+                    'upload_date': info_row[6],
+                    'efficiency_data': efficiency_data
+                })
+    else:
+        query = '''
+            SELECT i.user_ID, i.pcb_name, i.powerstage_name, i.phase_count, i.frequency,
+                   i.inductor_value, i.upload_date
+            FROM information_table i
+            WHERE 1=1
+        '''
+        params = []
+        if powerstage_name:
+            query += " AND i.powerstage_name LIKE ?"
+            params.append(f"%{powerstage_name}%")
+        if phase_count:
+            query += " AND i.phase_count = ?"
+            params.append(int(phase_count))
+        cursor = conn.execute(query, params)
+        for row in cursor.fetchall():
+            user_id = row[0]
+            eff_cursor = conn.execute('''
+                SELECT iout, efficiency, efficiency_remote, vin, vout
+                FROM efficiency_table
+                WHERE user_id = ?
+                ORDER BY iout
+            ''', (user_id,))
+            efficiency_data = []
+            for eff_row in eff_cursor.fetchall():
+                efficiency_data.append({
+                    'iout': eff_row[0],
+                    'efficiency': eff_row[1],
+                    'efficiency_remote': eff_row[2],
+                    'vin': eff_row[3],
+                    'vout': eff_row[4]
+                })
+            records.append({
+                'user_id': user_id,
+                'pcb_name': row[1],
+                'powerstage_name': row[2],
+                'phase_count': row[3],
+                'frequency': row[4],
+                'inductor_value': row[5],
+                'upload_date': row[6],
+                'efficiency_data': efficiency_data
             })
-        
-        records.append({
-            'user_id': user_id,
-            'pcb_name': row[1],
-            'powerstage_name': row[2],
-            'phase_count': row[3],
-            'frequency': row[4],
-            'inductor_value': row[5],
-            'upload_date': row[6],
-            'efficiency_data': efficiency_data
-        })
-    
     conn.close()
     return jsonify(records)
 

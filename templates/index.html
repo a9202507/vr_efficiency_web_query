@@ -837,6 +837,7 @@
       let multiChart = null;
       let selectedRecords = [];
       let currentUserId = null;
+      let selectedSeriesNumbers = [];
 
       // Socket.IO 事件
       socket.on("connect", function () {
@@ -963,9 +964,10 @@
             const fullLoadEfficiency = efficiencyData.length > 0 ? efficiencyData[efficiencyData.length - 1]?.efficiency || "N/A" : "N/A";
             const firstVin = efficiencyData.length > 0 && efficiencyData[0].vin !== undefined ? efficiencyData[0].vin : "N/A";
             const firstVout = efficiencyData.length > 0 && efficiencyData[0].vout !== undefined ? efficiencyData[0].vout : "N/A";
-
+            const checked = selectedSeriesNumbers.includes(record.series_number) ? "checked" : "";
             return `
                 <div class="record-item">
+                    <input type="checkbox" style="margin-right:8px;transform:scale(1.3);vertical-align:middle;" onchange="toggleSeriesSelection(${record.series_number}, this.checked)" ${checked} />
                     <div class="record-title">${index + 1}. ${record.pcb_name} - ${record.powerstage_name} (Series Number: ${record.series_number})</div>
                     <div class="record-details">
                         📊 Phases: ${record.phase_count} | 🔄 Frequency: ${record.frequency} kHz | 
@@ -981,6 +983,14 @@
             `;
           })
           .join("");
+      }
+
+      function toggleSeriesSelection(seriesNumber, checked) {
+        if (checked) {
+          if (!selectedSeriesNumbers.includes(seriesNumber)) selectedSeriesNumbers.push(seriesNumber);
+        } else {
+          selectedSeriesNumbers = selectedSeriesNumbers.filter(num => num !== seriesNumber);
+        }
       }
 
       // 選擇記錄
@@ -1185,28 +1195,20 @@
 
       // 多組比較搜尋
       async function showMultiChart() {
-        const powerstage = document.getElementById("searchPowerstage").value;
-        const phase = document.getElementById("searchPhase").value;
-
-        if (!powerstage && !phase) {
-          showNotification("請至少輸入一個搜尋條件", "error");
+        if (selectedSeriesNumbers.length === 0) {
+          showNotification("請至少勾選一筆資料進行比較", "error");
           return;
         }
-
         try {
           const params = new URLSearchParams({
-            powerstage_name: powerstage,
-            phase_count: phase,
+            series_numbers: selectedSeriesNumbers.join(",")
           });
-
           const response = await fetch(`/api/multi-search?${params}`);
           const records = await response.json();
-
           if (records.length === 0) {
             showNotification("沒有找到符合條件的記錄", "error");
             return;
           }
-
           updateMultiChart(records);
           showNotification(`載入 ${records.length} 組數據進行比較`);
         } catch (error) {
@@ -1217,14 +1219,10 @@
 
       // 更新多組比較圖表
       function updateMultiChart(records) {
-        const ctx = document
-          .getElementById("multiCompareChart")
-          .getContext("2d");
-
+        const ctx = document.getElementById("multiCompareChart").getContext("2d");
         if (multiChart) {
           multiChart.destroy();
         }
-
         const colors = [
           "rgb(102, 126, 234)",
           "rgb(245, 87, 108)",
@@ -1236,22 +1234,49 @@
           "rgb(52, 152, 219)",
           "rgb(46, 204, 113)",
         ];
-
-        const datasets = records.map((record, index) => ({
-          label: `${record.pcb_name} - ${record.powerstage_name}`,
-          data: record.efficiency_data.map((d) => ({
-            x: d.iout,
-            y: d.efficiency,
-          })),
-          borderColor: colors[index % colors.length],
-          backgroundColor: colors[index % colors.length] + "20",
-          borderWidth: 3,
-          fill: false,
-          tension: 0.4,
-          pointRadius: 4,
-          pointHoverRadius: 8,
-        }));
-
+        const datasets = records.map((record, index) => {
+          // 產生下載檔名
+          let date_str = "unknown";
+          if (record.upload_date) {
+            try {
+              let date_raw = String(record.upload_date);
+              let date_part, time_part;
+              if (date_raw.includes(" ")) {
+                [date_part, time_part] = date_raw.split(" ");
+              } else {
+                date_part = date_raw;
+                time_part = "00:00:00";
+              }
+              let dt;
+              if (date_part.includes("-")) {
+                dt = new Date(date_part);
+              } else if (date_part.includes("/")) {
+                let parts = date_part.split("/");
+                dt = new Date(parts[0], parts[1] - 1, parts[2]);
+              }
+              let hm = time_part.slice(0, 5).replace(":", "");
+              date_str = dt ? `${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,"0")}${String(dt.getDate()).padStart(2,"0")}-${hm}` : "unknown";
+            } catch {}
+          }
+          // 取第一筆 vin/vout
+          let vin = "NA", vout = "NA";
+          if (record.efficiency_data && record.efficiency_data.length > 0) {
+            vin = record.efficiency_data[0].vin !== undefined ? record.efficiency_data[0].vin + "vin" : "NA";
+            vout = record.efficiency_data[0].vout !== undefined ? record.efficiency_data[0].vout + "vout" : "NA";
+          }
+          const filename = `${record.pcb_name}_${vin}_${vout}_${record.powerstage_name}_${record.phase_count}ph_${record.frequency}khz_${record.inductor_value}nH_${record.imax || ""}Amps_${date_str}.csv`;
+          return {
+            label: filename,
+            data: record.efficiency_data.map((d) => ({ x: d.iout, y: d.efficiency })),
+            borderColor: colors[index % colors.length],
+            backgroundColor: colors[index % colors.length] + "20",
+            borderWidth: 3,
+            fill: false,
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 8,
+          };
+        });
         multiChart = new Chart(ctx, {
           type: "line",
           data: { datasets },
