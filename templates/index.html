@@ -526,7 +526,6 @@
       <div class="tabs">
         <div class="tab active" onclick="switchTab('upload')">📊 Upload Data</div>
         <div class="tab" onclick="switchTab('search')">🔍 Search Analysis</div>
-        <div class="tab" onclick="switchTab('charts')">📈 Efficiency Charts</div>
         <div
           id="adminTab"
           class="tab"
@@ -664,29 +663,6 @@
             <button class="chart-btn" onclick="clearChart()">Clear Chart</button>
           </div>
           <canvas id="multiCompareChart" width="400" height="200"></canvas>
-        </div>
-      </div>
-
-      <!-- 效率圖表頁面 -->
-      <div id="charts" class="tab-content">
-        <div class="chart-container">
-          <h2>📈 Efficiency Curve Analysis</h2>
-          <div class="chart-controls">
-            <select
-              id="recordSelector"
-              style="padding: 12px; border-radius: 8px; border: 1px solid #ddd"
-            >
-              <option value="">Select Test Record...</option>
-            </select>
-            <button class="chart-btn" onclick="loadSingleChart()">
-              Load Chart
-            </button>
-            <button class="chart-btn" onclick="downloadCurrentData()">
-              Download Raw Data
-            </button>
-          </div>
-
-          <canvas id="efficiencyChart" width="400" height="200"></canvas>
         </div>
       </div>
 
