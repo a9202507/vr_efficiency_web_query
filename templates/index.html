@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VR實測效率查詢系統</title>
+    <title>VR Efficiency Query System</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <style>
@@ -513,74 +513,77 @@
   <body>
     <div class="admin-panel">
       <button id="adminToggle" class="admin-btn" onclick="toggleAdmin()">
-        管理者登入
+        Admin Login
       </button>
     </div>
 
     <div class="container">
       <div class="header">
-        <h1>⚡ VR實測效率查詢系統</h1>
+        <h1>⚡ VR Efficiency Query System</h1>
         <p>Voltage Regulator Efficiency Analysis Platform</p>
       </div>
 
       <div class="tabs">
-        <div class="tab active" onclick="switchTab('upload')">📊 上傳數據</div>
-        <div class="tab" onclick="switchTab('search')">🔍 搜尋分析</div>
-        <div class="tab" onclick="switchTab('charts')">📈 效率圖表</div>
+        <div class="tab active" onclick="switchTab('upload')">📊 Upload Data</div>
+        <div class="tab" onclick="switchTab('search')">🔍 Search Analysis</div>
+        <div class="tab" onclick="switchTab('charts')">📈 Efficiency Charts</div>
         <div
           id="adminTab"
           class="tab"
           onclick="switchTab('admin')"
           style="display: none"
         >
-          ⚙️ 系統管理
+          ⚙️ System Management
         </div>
       </div>
 
       <!-- 上傳數據頁面 -->
       <div id="upload" class="tab-content active">
         <div class="form-container">
-          <h2 class="form-title">📤 上傳效率測試數據</h2>
+          <h2 class="form-title">📤 Upload Efficiency Test Data</h2>
           <form id="uploadForm" enctype="multipart/form-data">
             <div class="form-grid">
               <div class="form-group">
-                <label>使用者名稱 *</label>
+                <label>User Name *</label>
                 <input type="text" name="user_name" required />
               </div>
               <div class="form-group">
-                <label>PCB 名稱 *</label>
+                <label>PCB Name *</label>
                 <input type="text" name="pcb_name" required />
               </div>
               <div class="form-group">
-                <label>Power Stage 名稱 *</label>
+                <label>Power Stage Name *</label>
                 <input type="text" name="powerstage_name" required />
               </div>
               <div class="form-group">
-                <label>相數 *</label>
+                <label>Phase Count *</label>
                 <input type="number" name="phase_count" required min="1" />
               </div>
               <div class="form-group">
-                <label>頻率 (kHz) *</label>
+                <label>Frequency (kHz) *</label>
                 <input type="number" name="frequency" required min="1" />
               </div>
               <div class="form-group">
-                <label>電感值 (nH) *</label>
+                <label>Inductor Value (nH) *</label>
                 <input type="number" name="inductor_value" required min="1" />
               </div>
               <div class="form-group">
                 <label>TLVR</label>
-                <input type="number" name="tlvr" min="1" />
+                <select name="tlvr">
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
               </div>
               <div class="form-group">
-                <label>最大電流 (A) *</label>
+                <label>Max Current (A) *</label>
                 <input type="number" name="imax" required min="1" />
               </div>
               <div class="form-group">
-                <label>備註</label>
+                <label>Remarks</label>
                 <textarea
                   name="notice"
                   rows="3"
-                  placeholder="測試條件備註..."
+                  placeholder="Test condition remarks..."
                 ></textarea>
               </div>
             </div>
@@ -594,16 +597,16 @@
                 required
               />
               <label for="csvFile" class="file-upload-content">
-                📁 點擊選擇 CSV 或 XLSX 檔案<br />
+                📁 Click to select CSV or XLSX file<br />
                 <small
-                  >支援格式：CSV (.csv) 或 Excel (.xlsx, .xls)<br />必要欄位：Istep,
+                  >Supported formats: CSV (.csv) or Excel (.xlsx, .xls)<br />Required fields: Istep,
                   Vin, Iin, Vout, remote Vout sense, Iout, Efficiency,
                   Efficiency_remote</small
                 >
               </label>
             </div>
 
-            <button type="submit" class="btn-primary">🚀 上傳測試數據</button>
+            <button type="submit" class="btn-primary">🚀 Upload Test Data</button>
           </form>
 
           <div id="uploadStatus"></div>
@@ -613,52 +616,52 @@
       <!-- 搜尋分析頁面 -->
       <div id="search" class="tab-content">
         <div class="search-container">
-          <h2 class="form-title">🔍 多條件搜尋</h2>
+          <h2 class="form-title">🔍 Multi-condition Search</h2>
           <div class="form-grid">
             <div class="form-group">
-              <label>Power Stage 名稱</label>
+              <label>Power Stage Name</label>
               <input
                 type="text"
                 id="searchPowerstage"
-                placeholder="例：TDA22594A"
+                placeholder="e.g., TDA22594A"
               />
             </div>
             <div class="form-group">
-              <label>相數</label>
-              <input type="number" id="searchPhase" placeholder="例：6" />
+              <label>Phase Count</label>
+              <input type="number" id="searchPhase" placeholder="e.g., 6" />
             </div>
             <div class="form-group">
-              <label>頻率 (kHz)</label>
+              <label>Frequency (kHz)</label>
               <input type="number" id="searchFrequency" />
             </div>
             <div class="form-group">
-              <label>電感值 (nH)</label>
+              <label>Inductor Value (nH)</label>
               <input type="number" id="searchInductor" />
             </div>
             <div class="form-group">
-              <label>PCB 名稱</label>
+              <label>PCB Name</label>
               <input type="text" id="searchPcb" />
             </div>
             <div class="form-group">
               <button class="btn-primary" onclick="searchRecords()">
-                🔍 搜尋記錄
+                🔍 Search Records
               </button>
             </div>
           </div>
         </div>
 
         <div class="results-container">
-          <h3>📋 搜尋結果</h3>
+          <h3>📋 Search Results</h3>
           <div id="searchResults"></div>
         </div>
 
         <div class="chart-container">
-          <h3>📊 多組效率比較</h3>
+          <h3>📊 Multi-group Efficiency Comparison</h3>
           <div class="chart-controls">
             <button class="chart-btn" onclick="showMultiChart()">
-              顯示比較圖表
+              Show Comparison Chart
             </button>
-            <button class="chart-btn" onclick="clearChart()">清除圖表</button>
+            <button class="chart-btn" onclick="clearChart()">Clear Chart</button>
           </div>
           <canvas id="multiCompareChart" width="400" height="200"></canvas>
         </div>
@@ -667,19 +670,19 @@
       <!-- 效率圖表頁面 -->
       <div id="charts" class="tab-content">
         <div class="chart-container">
-          <h2>📈 效率曲線分析</h2>
+          <h2>📈 Efficiency Curve Analysis</h2>
           <div class="chart-controls">
             <select
               id="recordSelector"
               style="padding: 12px; border-radius: 8px; border: 1px solid #ddd"
             >
-              <option value="">選擇測試記錄...</option>
+              <option value="">Select Test Record...</option>
             </select>
             <button class="chart-btn" onclick="loadSingleChart()">
-              載入圖表
+              Load Chart
             </button>
             <button class="chart-btn" onclick="downloadCurrentData()">
-              下載原始數據
+              Download Raw Data
             </button>
           </div>
 
@@ -690,20 +693,20 @@
       <!-- 管理者頁面 -->
       <div id="admin" class="tab-content">
         <div class="admin-section">
-          <h2 class="form-title">⚙️ 系統管理</h2>
+          <h2 class="form-title">⚙️ System Management</h2>
 
           <div class="admin-functions">
             <div class="admin-card">
-              <h3>💾 資料庫備份</h3>
-              <p>下載完整資料庫備份檔案</p>
+              <h3>💾 Database Backup</h3>
+              <p>Download a complete database backup file</p>
               <button class="btn-primary" onclick="backupDatabase()">
-                下載備份
+                Download Backup
               </button>
             </div>
 
             <div class="admin-card">
-              <h3>📥 資料庫還原</h3>
-              <p>上傳備份檔案進行還原</p>
+              <h3>📥 Database Restore</h3>
+              <p>Upload a backup file to restore the database</p>
               <input
                 type="file"
                 id="restoreFile"
@@ -711,15 +714,15 @@
                 style="margin: 10px 0"
               />
               <button class="btn-primary" onclick="restoreDatabase()">
-                還原資料庫
+                Restore Database
               </button>
             </div>
 
             <div class="admin-card">
-              <h3>🛠️ 資料表管理</h3>
-              <p>管理資料表欄位結構</p>
+              <h3>🛠️ Table Management</h3>
+              <p>Manage table column structures</p>
               <button class="btn-primary" onclick="showTableManager()">
-                管理資料表
+                Manage Tables
               </button>
             </div>
           </div>
@@ -733,9 +736,9 @@
     <!-- 管理者登入模態框 -->
     <div id="adminLoginModal" class="modal">
       <div class="modal-content">
-        <div class="modal-header">🔐 管理者登入</div>
+        <div class="modal-header">🔐 Admin Login</div>
         <div class="form-group">
-          <label>管理者密碼</label>
+          <label>Admin Password</label>
           <input
             type="password"
             id="adminPassword"
@@ -748,9 +751,9 @@
           />
         </div>
         <div style="text-align: center; margin-top: 20px">
-          <button class="btn-primary" onclick="adminLogin()">登入</button>
+          <button class="btn-primary" onclick="adminLogin()">Login</button>
           <button class="chart-btn" onclick="closeModal('adminLoginModal')">
-            取消
+            Cancel
           </button>
         </div>
       </div>
@@ -893,8 +896,8 @@
               showNotification("數據上傳成功！");
               this.reset();
               document.querySelector(".file-upload-content").innerHTML = `
-                        📁 點擊選擇 CSV 或 XLSX 檔案<br>
-                        <small>支援格式：CSV (.csv) 或 Excel (.xlsx, .xls)<br>必要欄位：Istep, Vin, Iin, Vout, remote Vout sense, Iout, Efficiency, Efficiency_remote</small>
+                        📁 Click to select CSV or XLSX file<br>
+                        <small>Supported formats: CSV (.csv) or Excel (.xlsx, .xls)<br>Required fields: Istep, Vin, Iin, Vout, remote Vout sense, Iout, Efficiency, Efficiency_remote</small>
                     `;
             } else {
               statusDiv.innerHTML = `<div class="status-message status-error">❌ 上傳失敗：${result.error}</div>`;
@@ -992,7 +995,7 @@
           const records = await response.json();
 
           const selector = document.getElementById("recordSelector");
-          selector.innerHTML = '<option value="">選擇測試記錄...</option>';
+          selector.innerHTML = '<option value="">Select Test Record...</option>';
 
           records.forEach((record) => {
             const option = document.createElement("option");
