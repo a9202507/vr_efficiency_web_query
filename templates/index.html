@@ -258,11 +258,13 @@
         border-radius: 20px;
         margin-bottom: 30px;
         box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        min-height: 800px;
       }
 
       .chart-container canvas {
-        min-height: 300px;
-        max-height: 400px;
+        min-height: 600px;
+        max-height: 800px;
+        height: 100% !important;
       }
 
       .chart-container:not(.has-chart) canvas {
@@ -1678,6 +1680,7 @@
             },
           },
         });
+        enableChartTitleEdit();
       }
 
       // 重置縮放
