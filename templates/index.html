@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VR Efficiency Query System</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <style>
       * {
@@ -699,6 +700,9 @@
             </button>
             <button class="chart-btn" onclick="clearChart()">
               Clear Chart
+            </button>
+            <button class="chart-btn" onclick="resetZoom()">
+              Reset Zoom
             </button>
           </div>
           <canvas id="multiCompareChart" width="400" height="200"></canvas>
@@ -1513,6 +1517,10 @@
         if (multiChart) {
           multiChart.destroy();
         }
+        
+        // 檢查是否為手機裝置
+        const isMobile = window.innerWidth <= 768;
+        
         const colors = [
           "rgb(102, 126, 234)",
           "rgb(245, 87, 108)",
@@ -1594,16 +1602,38 @@
             plugins: {
               title: {
                 display: true,
-                text: "多組效率比較圖",
+                text: "Multi-group Efficiency Comparison",
                 font: {
-                  size: 20,
+                  size: isMobile ? 14 : 20,
                   weight: "bold",
                 },
+                padding: isMobile ? 10 : 20,
               },
               legend: {
                 display: true,
                 position: "top",
+                labels: {
+                  font: {
+                    size: isMobile ? 10 : 12,
+                  },
+                  padding: isMobile ? 10 : 20,
+                },
               },
+              zoom: {
+                zoom: {
+                  wheel: {
+                    enabled: true,
+                  },
+                  pinch: {
+                    enabled: true
+                  },
+                  mode: 'y',
+                },
+                pan: {
+                  enabled: true,
+                  mode: 'y',
+                }
+              }
             },
             scales: {
               x: {
@@ -1611,10 +1641,15 @@
                 display: true,
                 title: {
                   display: true,
-                  text: "輸出電流 (A)",
+                  text: "Output Current (A)",
                   font: {
-                    size: 16,
+                    size: isMobile ? 12 : 16,
                     weight: "bold",
+                  },
+                },
+                ticks: {
+                  font: {
+                    size: isMobile ? 10 : 12,
                   },
                 },
               },
@@ -1622,14 +1657,19 @@
                 display: true,
                 title: {
                   display: true,
-                  text: "效率 (%)",
+                  text: "Efficiency (%)",
                   font: {
-                    size: 16,
+                    size: isMobile ? 12 : 16,
                     weight: "bold",
                   },
                 },
                 min: 0,
                 max: 100,
+                ticks: {
+                  font: {
+                    size: isMobile ? 10 : 12,
+                  },
+                },
               },
             },
             animation: {
@@ -1638,6 +1678,14 @@
             },
           },
         });
+      }
+
+      // 重置縮放
+      function resetZoom() {
+        if (multiChart) {
+          multiChart.resetZoom();
+          showNotification("圖表縮放已重置");
+        }
       }
 
       // 清除圖表
