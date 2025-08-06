@@ -687,6 +687,14 @@
               <input type="text" id="searchPcb" />
             </div>
             <div class="form-group">
+              <label>Vin (V)</label>
+              <input type="number" id="searchVin" placeholder="e.g., 12" />
+            </div>
+            <div class="form-group">
+              <label>Vout (V)</label>
+              <input type="number" id="searchVout" placeholder="e.g., 1.8" />
+            </div>
+            <div class="form-group">
               <button class="btn-primary" onclick="searchRecords()">
                 🔍 Search Records
               </button>
@@ -1166,12 +1174,35 @@
 
       // 搜尋記錄
       async function searchRecords() {
+        const vinValue = document.getElementById("searchVin").value;
+        const voutValue = document.getElementById("searchVout").value;
+        
+        // 計算 vin 的 ±10% 範圍
+        let vinMin = '', vinMax = '';
+        if (vinValue && !isNaN(vinValue)) {
+          const vin = parseFloat(vinValue);
+          vinMin = (vin * 0.9).toFixed(2);
+          vinMax = (vin * 1.1).toFixed(2);
+        }
+        
+        // 計算 vout 的 ±10% 範圍
+        let voutMin = '', voutMax = '';
+        if (voutValue && !isNaN(voutValue)) {
+          const vout = parseFloat(voutValue);
+          voutMin = (vout * 0.9).toFixed(2);
+          voutMax = (vout * 1.1).toFixed(2);
+        }
+        
         const params = new URLSearchParams({
           powerstage_name: document.getElementById("searchPowerstage").value,
           phase_count: document.getElementById("searchPhase").value,
           frequency: document.getElementById("searchFrequency").value,
           inductor_value: document.getElementById("searchInductor").value,
           pcb_name: document.getElementById("searchPcb").value,
+          vin_min: vinMin,
+          vin_max: vinMax,
+          vout_min: voutMin,
+          vout_max: voutMax,
         });
 
         try {

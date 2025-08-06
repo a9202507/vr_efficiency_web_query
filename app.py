@@ -1,6 +1,6 @@
 # app.py - VR實測效率查詢系統
 from flask import Flask, request, jsonify, render_template, send_file, session, abort, redirect, url_for, make_response
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room
 import sqlite3
 import pandas as pd
 import json
@@ -200,30 +200,51 @@ def search_records():
     frequency = request.args.get('frequency')
     inductor_value = request.args.get('inductor_value')
     pcb_name = request.args.get('pcb_name')
+    vin_min = request.args.get('vin_min')
+    vin_max = request.args.get('vin_max')
+    vout_min = request.args.get('vout_min')
+    vout_max = request.args.get('vout_max')
     
     conn = sqlite3.connect('data/vr_efficiency.sqlite')
     conn.row_factory = sqlite3.Row
     
-    query = "SELECT * FROM information_table WHERE 1=1"
+    # 如果有 vin/vout 範圍條件，需要 JOIN efficiency_table
+    if vin_min or vin_max or vout_min or vout_max:
+        query = """
+            SELECT DISTINCT i.* FROM information_table i
+            JOIN efficiency_table e ON i.user_ID = e.user_id
+            WHERE 1=1
+        """
+    else:
+        query = "SELECT * FROM information_table WHERE 1=1"
+    
     params = []
     
     if powerstage_name:
-        query += " AND powerstage_name LIKE ?"
+        query += " AND i.powerstage_name LIKE ?" if (vin_min or vin_max or vout_min or vout_max) else " AND powerstage_name LIKE ?"
         params.append(f"%{powerstage_name}%")
     if phase_count:
-        query += " AND phase_count = ?"
+        query += " AND i.phase_count = ?" if (vin_min or vin_max or vout_min or vout_max) else " AND phase_count = ?"
         params.append(int(phase_count))
     if frequency:
-        query += " AND frequency = ?"
+        query += " AND i.frequency = ?" if (vin_min or vin_max or vout_min or vout_max) else " AND frequency = ?"
         params.append(int(frequency))
     if inductor_value:
-        query += " AND inductor_value = ?"
+        query += " AND i.inductor_value = ?" if (vin_min or vin_max or vout_min or vout_max) else " AND inductor_value = ?"
         params.append(int(inductor_value))
     if pcb_name:
-        query += " AND pcb_name LIKE ?"
+        query += " AND i.pcb_name LIKE ?" if (vin_min or vin_max or vout_min or vout_max) else " AND pcb_name LIKE ?"
         params.append(f"%{pcb_name}%")
     
-    query += " ORDER BY upload_date DESC"
+    # 新增 vin/vout 範圍條件
+    if vin_min and vin_max:
+        query += " AND e.vin BETWEEN ? AND ?"
+        params.extend([float(vin_min), float(vin_max)])
+    if vout_min and vout_max:
+        query += " AND e.vout BETWEEN ? AND ?"
+        params.extend([float(vout_min), float(vout_max)])
+    
+    query += " ORDER BY i.upload_date DESC" if (vin_min or vin_max or vout_min or vout_max) else " ORDER BY upload_date DESC"
     
     cursor = conn.execute(query, params)
     records = []
