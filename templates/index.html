@@ -261,20 +261,44 @@
 
       .record-item {
         background: linear-gradient(90deg, #f8f9fa, #e9ecef);
-        padding: 25px;
+        padding: 20px;
         margin-bottom: 15px;
         border-radius: 15px;
         cursor: pointer;
         transition: all 0.3s ease;
         border: 2px solid transparent;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        flex: 0 0 calc(33.333% - 15px);
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
       }
 
       .record-item:hover {
         background: linear-gradient(90deg, #667eea, #764ba2);
         color: white;
-        transform: translateX(10px);
+        transform: translateY(-5px);
         border-color: #43e97b;
         box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+      }
+
+      .record-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-top: 15px;
+      }
+
+      @media (max-width: 1200px) {
+        .record-item {
+          flex: 0 0 calc(50% - 15px);
+        }
+      }
+
+      @media (max-width: 768px) {
+        .record-item {
+          flex: 0 0 100%;
+        }
       }
 
       .record-title {
@@ -524,7 +548,9 @@
       </div>
 
       <div class="tabs">
-        <div class="tab active" onclick="switchTab('upload')">📊 Upload Data</div>
+        <div class="tab active" onclick="switchTab('upload')">
+          📊 Upload Data
+        </div>
         <div class="tab" onclick="switchTab('search')">🔍 Search Analysis</div>
         <div
           id="adminTab"
@@ -598,14 +624,16 @@
               <label for="csvFile" class="file-upload-content">
                 📁 Click to select CSV or XLSX file<br />
                 <small
-                  >Supported formats: CSV (.csv) or Excel (.xlsx, .xls)<br />Required fields: Istep,
-                  Vin, Iin, Vout, remote Vout sense, Iout, Efficiency,
-                  Efficiency_remote</small
+                  >Supported formats: CSV (.csv) or Excel (.xlsx, .xls)<br />Required
+                  fields: Istep, Vin, Iin, Vout, remote Vout sense, Iout,
+                  Efficiency, Efficiency_remote</small
                 >
               </label>
             </div>
 
-            <button type="submit" class="btn-primary">🚀 Upload Test Data</button>
+            <button type="submit" class="btn-primary">
+              🚀 Upload Test Data
+            </button>
           </form>
 
           <div id="uploadStatus"></div>
@@ -649,20 +677,22 @@
           </div>
         </div>
 
-        <div class="results-container">
-          <h3>📋 Search Results</h3>
-          <div id="searchResults"></div>
-        </div>
-
         <div class="chart-container">
           <h3>📊 Multi-group Efficiency Comparison</h3>
           <div class="chart-controls">
             <button class="chart-btn" onclick="showMultiChart()">
               Show Comparison Chart
             </button>
-            <button class="chart-btn" onclick="clearChart()">Clear Chart</button>
+            <button class="chart-btn" onclick="clearChart()">
+              Clear Chart
+            </button>
           </div>
           <canvas id="multiCompareChart" width="400" height="200"></canvas>
+        </div>
+
+        <div class="results-container">
+          <h3>📋 Search Results</h3>
+          <div id="searchResults"></div>
         </div>
       </div>
 
@@ -705,10 +735,21 @@
             <div class="admin-card">
               <h3>🗑️ Delete Record by Series Number</h3>
               <p>Select the Series Number of the record to delete</p>
-              <select id="deleteSeriesNumber" style="margin: 10px 0; padding: 10px; border-radius: 8px; border: 1px solid #ddd; width: 100%;">
+              <select
+                id="deleteSeriesNumber"
+                style="
+                  margin: 10px 0;
+                  padding: 10px;
+                  border-radius: 8px;
+                  border: 1px solid #ddd;
+                  width: 100%;
+                "
+              >
                 <!-- Options will be dynamically populated -->
               </select>
-              <button class="btn-danger" onclick="deleteRecordBySeriesNumber()">Delete Record</button>
+              <button class="btn-danger" onclick="deleteRecordBySeriesNumber()">
+                Delete Record
+              </button>
             </div>
           </div>
         </div>
@@ -929,43 +970,80 @@
         const resultsDiv = document.getElementById("searchResults");
 
         if (records.length === 0) {
-          resultsDiv.innerHTML = '<div class="record-item">🔍 No matching records found</div>';
+          resultsDiv.innerHTML =
+            '<div class="record-item">🔍 No matching records found</div>';
           return;
         }
 
-        resultsDiv.innerHTML = records
-          .map((record, index) => {
-            const efficiencyData = record.efficiency_data || [];
-            const maxEfficiency = efficiencyData.length > 0 ? Math.max(...efficiencyData.map(d => d.efficiency)) : "N/A";
-            const fullLoadEfficiency = efficiencyData.length > 0 ? efficiencyData[efficiencyData.length - 1]?.efficiency || "N/A" : "N/A";
-            const firstVin = efficiencyData.length > 0 && efficiencyData[0].vin !== undefined ? efficiencyData[0].vin : "N/A";
-            const firstVout = efficiencyData.length > 0 && efficiencyData[0].vout !== undefined ? efficiencyData[0].vout : "N/A";
-            const checked = selectedSeriesNumbers.includes(record.series_number) ? "checked" : "";
-            return `
-                <div class="record-item">
-                    <input type="checkbox" style="margin-right:8px;transform:scale(1.3);vertical-align:middle;" onchange="toggleSeriesSelection(${record.series_number}, this.checked)" ${checked} />
-                    <div class="record-title">${index + 1}. ${record.pcb_name} - ${record.powerstage_name} (Series Number: ${record.series_number})</div>
-                    <div class="record-details">
-                        📊 Phases: ${record.phase_count} | 🔄 Frequency: ${record.frequency} kHz | 
-                        🔌 Inductor: ${record.inductor_value} nH | 👤 Uploaded by: ${record.user_name} | 
-                        📅 Date: ${new Date(record.upload_date).toLocaleDateString()}<br>
-                        🔋 Vin: ${firstVin} | ⚡ Vout: ${firstVout}<br>
-                        🏆 Max Efficiency: ${maxEfficiency !== "N/A" ? maxEfficiency.toFixed(2) : "N/A"}% | ⚡ Full Load Efficiency: ${fullLoadEfficiency !== "N/A" ? fullLoadEfficiency.toFixed(2) : "N/A"}%
+        resultsDiv.innerHTML = `
+          <div class="record-grid">
+            ${records
+              .map((record, index) => {
+                const efficiencyData = record.efficiency_data || [];
+                const maxEfficiency =
+                  efficiencyData.length > 0
+                    ? Math.max(...efficiencyData.map((d) => d.efficiency))
+                    : "N/A";
+                const fullLoadEfficiency =
+                  efficiencyData.length > 0
+                    ? efficiencyData[efficiencyData.length - 1]?.efficiency || "N/A"
+                    : "N/A";
+                const firstVin =
+                  efficiencyData.length > 0 && efficiencyData[0].vin !== undefined
+                    ? efficiencyData[0].vin
+                    : "N/A";
+                const firstVout =
+                  efficiencyData.length > 0 && efficiencyData[0].vout !== undefined
+                    ? efficiencyData[0].vout
+                    : "N/A";
+                const checked = selectedSeriesNumbers.includes(record.series_number)
+                  ? "checked"
+                  : "";
+                return `
+                    <div class="record-item">
+                        <input type="checkbox" style="margin-right:8px;transform:scale(1.3);vertical-align:middle;" onchange="toggleSeriesSelection(${
+                          record.series_number
+                        }, this.checked)" ${checked} />
+                        <div class="record-title">${index + 1}. ${
+                  record.pcb_name
+                } - ${record.powerstage_name}</div>
+                        <div style="font-size:12px;color:#666;margin-bottom:8px;">Series Number: ${
+                          record.series_number
+                        }</div>
+                        <div class="record-details">
+                            📊 Phases: ${record.phase_count}<br>
+                            🔄 Frequency: ${record.frequency} kHz<br>
+                            🔌 Inductor: ${record.inductor_value} nH<br>
+                            👤 By: ${record.user_name}<br>
+                            📅 ${new Date(record.upload_date).toLocaleDateString()}<br>
+                            🔋 Vin: ${firstVin} | ⚡ Vout: ${firstVout}<br>
+                            🏆 Max: ${
+                              maxEfficiency !== "N/A"
+                                ? maxEfficiency.toFixed(2)
+                                : "N/A"
+                            }%
+                        </div>
+                        <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${
+                          record.series_number
+                        })">
+                            📥 Download Data
+                        </button>
                     </div>
-                    <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${record.series_number})">
-                        📥 Download Raw Data
-                    </button>
-                </div>
-            `;
-          })
-          .join("");
+                `;
+              })
+              .join("")}
+          </div>
+        `;
       }
 
       function toggleSeriesSelection(seriesNumber, checked) {
         if (checked) {
-          if (!selectedSeriesNumbers.includes(seriesNumber)) selectedSeriesNumbers.push(seriesNumber);
+          if (!selectedSeriesNumbers.includes(seriesNumber))
+            selectedSeriesNumbers.push(seriesNumber);
         } else {
-          selectedSeriesNumbers = selectedSeriesNumbers.filter(num => num !== seriesNumber);
+          selectedSeriesNumbers = selectedSeriesNumbers.filter(
+            (num) => num !== seriesNumber
+          );
         }
       }
 
@@ -984,7 +1062,8 @@
           const records = await response.json();
 
           const selector = document.getElementById("recordSelector");
-          selector.innerHTML = '<option value="">Select Test Record...</option>';
+          selector.innerHTML =
+            '<option value="">Select Test Record...</option>';
 
           records.forEach((record) => {
             const option = document.createElement("option");
@@ -1177,7 +1256,7 @@
         }
         try {
           const params = new URLSearchParams({
-            series_numbers: selectedSeriesNumbers.join(",")
+            series_numbers: selectedSeriesNumbers.join(","),
           });
           const response = await fetch(`/api/multi-search?${params}`);
           const records = await response.json();
@@ -1195,7 +1274,9 @@
 
       // 更新多組比較圖表
       function updateMultiChart(records) {
-        const ctx = document.getElementById("multiCompareChart").getContext("2d");
+        const ctx = document
+          .getElementById("multiCompareChart")
+          .getContext("2d");
         if (multiChart) {
           multiChart.destroy();
         }
@@ -1231,19 +1312,38 @@
                 dt = new Date(parts[0], parts[1] - 1, parts[2]);
               }
               let hm = time_part.slice(0, 5).replace(":", "");
-              date_str = dt ? `${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,"0")}${String(dt.getDate()).padStart(2,"0")}-${hm}` : "unknown";
+              date_str = dt
+                ? `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(
+                    2,
+                    "0"
+                  )}${String(dt.getDate()).padStart(2, "0")}-${hm}`
+                : "unknown";
             } catch {}
           }
           // 取第一筆 vin/vout
-          let vin = "NA", vout = "NA";
+          let vin = "NA",
+            vout = "NA";
           if (record.efficiency_data && record.efficiency_data.length > 0) {
-            vin = record.efficiency_data[0].vin !== undefined ? record.efficiency_data[0].vin + "vin" : "NA";
-            vout = record.efficiency_data[0].vout !== undefined ? record.efficiency_data[0].vout + "vout" : "NA";
+            vin =
+              record.efficiency_data[0].vin !== undefined
+                ? record.efficiency_data[0].vin + "vin"
+                : "NA";
+            vout =
+              record.efficiency_data[0].vout !== undefined
+                ? record.efficiency_data[0].vout + "vout"
+                : "NA";
           }
-          const filename = `${record.pcb_name}_${vin}_${vout}_${record.powerstage_name}_${record.phase_count}ph_${record.frequency}khz_${record.inductor_value}nH_${record.imax || ""}Amps_${date_str}.csv`;
+          const filename = `${record.pcb_name}_${vin}_${vout}_${
+            record.powerstage_name
+          }_${record.phase_count}ph_${record.frequency}khz_${
+            record.inductor_value
+          }nH_${record.imax || ""}Amps_${date_str}.csv`;
           return {
             label: filename,
-            data: record.efficiency_data.map((d) => ({ x: d.iout, y: d.efficiency })),
+            data: record.efficiency_data.map((d) => ({
+              x: d.iout,
+              y: d.efficiency,
+            })),
             borderColor: colors[index % colors.length],
             backgroundColor: colors[index % colors.length] + "20",
             borderWidth: 3,
@@ -1623,14 +1723,19 @@
 
       // 刪除特定資料
       async function deleteRecordBySeriesNumber() {
-        const seriesNumber = document.getElementById("deleteSeriesNumber").value;
+        const seriesNumber =
+          document.getElementById("deleteSeriesNumber").value;
 
         if (!seriesNumber) {
           alert("請選擇 Series Number");
           return;
         }
 
-        if (!confirm(`確定要刪除 Series Number 為 ${seriesNumber} 的記錄嗎？此操作無法復原。`)) {
+        if (
+          !confirm(
+            `確定要刪除 Series Number 為 ${seriesNumber} 的記錄嗎？此操作無法復原。`
+          )
+        ) {
           return;
         }
 
@@ -1656,20 +1761,21 @@
       // 載入 Series Number 選項
       async function populateSeriesNumbers() {
         try {
-          const response = await fetch('/api/series-numbers');
+          const response = await fetch("/api/series-numbers");
           const seriesNumbers = await response.json();
 
-          const select = document.getElementById('deleteSeriesNumber');
-          select.innerHTML = '<option value="">Select Series Number...</option>';
+          const select = document.getElementById("deleteSeriesNumber");
+          select.innerHTML =
+            '<option value="">Select Series Number...</option>';
 
-          seriesNumbers.forEach(number => {
-              const option = document.createElement('option');
-              option.value = number;
-              option.textContent = number;
-              select.appendChild(option);
+          seriesNumbers.forEach((number) => {
+            const option = document.createElement("option");
+            option.value = number;
+            option.textContent = number;
+            select.appendChild(option);
           });
         } catch (error) {
-          console.error('Failed to load series numbers:', error);
+          console.error("Failed to load series numbers:", error);
         }
       }
 
