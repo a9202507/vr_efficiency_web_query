@@ -259,6 +259,20 @@
         box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
       }
 
+      .chart-container canvas {
+        min-height: 300px;
+        max-height: 400px;
+      }
+
+      .chart-container:not(.has-chart) canvas {
+        display: none;
+      }
+
+      .chart-container:not(.has-chart) {
+        padding: 20px 30px;
+        min-height: auto;
+      }
+
       .record-item {
         background: linear-gradient(90deg, #f8f9fa, #e9ecef);
         padding: 20px;
@@ -1274,6 +1288,9 @@
 
       // 更新多組比較圖表
       function updateMultiChart(records) {
+        const chartContainer = document.querySelector('.chart-container');
+        chartContainer.classList.add('has-chart');
+        
         const ctx = document
           .getElementById("multiCompareChart")
           .getContext("2d");
@@ -1412,6 +1429,8 @@
         if (multiChart) {
           multiChart.destroy();
           multiChart = null;
+          const chartContainer = document.querySelector('.chart-container');
+          chartContainer.classList.remove('has-chart');
           showNotification("圖表已清除");
         }
       }
