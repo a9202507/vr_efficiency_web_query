@@ -15,7 +15,7 @@
 
       body {
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #0A8276 0%, #065b53 100%);
         min-height: 100vh;
         padding: 20px;
       }
@@ -34,7 +34,7 @@
         text-align: center;
         margin-bottom: 40px;
         padding-bottom: 20px;
-        border-bottom: 3px solid #667eea;
+        border-bottom: 3px solid #0A8276;
       }
 
       .header h1 {
@@ -42,7 +42,7 @@
         font-size: 3em;
         margin-bottom: 10px;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-        background: linear-gradient(45deg, #667eea, #764ba2);
+        background: linear-gradient(45deg, #0A8276, #065b53);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
       }
@@ -98,10 +98,10 @@
       }
 
       .tab.active {
-        background: linear-gradient(45deg, #667eea, #764ba2);
+        background: linear-gradient(45deg, #0A8276, #065b53);
         color: white;
         transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 8px 25px rgba(10, 130, 118, 0.4);
       }
 
       .tab:hover:not(.active) {
@@ -130,12 +130,12 @@
       }
 
       .form-container {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #0A8276 0%, #065b53 100%);
         padding: 40px;
         border-radius: 20px;
         margin-bottom: 30px;
         color: white;
-        box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 15px 35px rgba(10, 130, 118, 0.3);
       }
 
       .form-title {
@@ -183,7 +183,7 @@
         background: white;
         transform: scale(1.02);
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        border-color: #43e97b;
+        border-color: #0A8276;
       }
 
       .file-upload {
@@ -216,7 +216,7 @@
       }
 
       .btn-primary {
-        background: linear-gradient(45deg, #43e97b, #38f9d7);
+        background: linear-gradient(45deg, #007bff, #0056b3);
         color: white;
         border: none;
         padding: 18px 40px;
@@ -225,18 +225,18 @@
         font-weight: 600;
         cursor: pointer;
         transition: all 0.3s ease;
-        box-shadow: 0 8px 25px rgba(67, 233, 123, 0.4);
+        box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4);
         display: block;
         margin: 0 auto;
       }
 
       .btn-primary:hover {
         transform: translateY(-3px);
-        box-shadow: 0 15px 35px rgba(67, 233, 123, 0.6);
+        box-shadow: 0 15px 35px rgba(0, 123, 255, 0.6);
       }
 
       .search-container {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, #0A8276 0%, #065b53 100%);
         padding: 35px;
         border-radius: 20px;
         margin-bottom: 30px;
@@ -289,11 +289,11 @@
       }
 
       .record-item:hover {
-        background: linear-gradient(90deg, #667eea, #764ba2);
+        background: linear-gradient(90deg, #0A8276, #065b53);
         color: white;
         transform: translateY(-5px);
-        border-color: #43e97b;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        border-color: #0A8276;
+        box-shadow: 0 10px 30px rgba(10, 130, 118, 0.3);
       }
 
       .record-grid {
@@ -1683,7 +1683,7 @@
             document.getElementById("adminTab").style.display = "block";
             document.getElementById("adminToggle").textContent = "管理者登出";
             document.getElementById("adminToggle").style.background =
-              "linear-gradient(45deg, #43e97b, #38f9d7)";
+              "linear-gradient(45deg, #0A8276, #065b53)";
             closeModal("adminLoginModal");
             showNotification("管理者登入成功");
           } else {
@@ -1951,7 +1951,7 @@
               document.getElementById("adminTab").style.display = "block";
               document.getElementById("adminToggle").textContent = "管理者登出";
               document.getElementById("adminToggle").style.background =
-                "linear-gradient(45deg, #43e97b, #38f9d7)";
+              "linear-gradient(45deg, #0A8276, #065b53)";
             }
           })
           .catch(() => {
