@@ -869,6 +869,10 @@
       let selectedRecords = [];
       let currentUserId = null;
       let selectedSeriesNumbers = [];
+      let allRecords = [];
+      let displayedRecords = 0;
+      const recordsPerPage = 3;
+      let isLoading = false;
 
       // Socket.IO 事件
       socket.on("connect", function () {
@@ -895,7 +899,9 @@
         document.getElementById(tabName).classList.add("active");
         event.target.classList.add("active");
 
-        if (tabName === "charts") {
+        if (tabName === "search") {
+          loadLatestRecords(); // 自動載入最新資料
+        } else if (tabName === "charts") {
           loadRecordOptions();
         }
       }
@@ -959,6 +965,199 @@
           label.innerHTML = `📁 ${fileName}<br><small>CSV 檔案已選擇</small>`;
         });
 
+      // 載入最新記錄
+      async function loadLatestRecords() {
+        try {
+          const response = await fetch("/api/search");
+          allRecords = await response.json();
+          displayedRecords = 0;
+          isLoading = false;
+          
+          const resultsDiv = document.getElementById("searchResults");
+          resultsDiv.innerHTML = '';
+          
+          if (allRecords.length === 0) {
+            resultsDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;"><h3>📋 No records found</h3></div>';
+            return;
+          }
+          
+          loadMoreRecords();
+        } catch (error) {
+          console.error("載入最新記錄失敗:", error);
+          showNotification("載入資料失敗", "error");
+        }
+      }
+
+      // 載入更多記錄
+      function loadMoreRecords() {
+        console.log('loadMoreRecords 被呼叫:', {
+          isLoading,
+          displayedRecords,
+          totalRecords: allRecords.length
+        });
+        
+        if (isLoading || displayedRecords >= allRecords.length) {
+          console.log('跳過載入:', { isLoading, displayedRecords, total: allRecords.length });
+          return;
+        }
+        
+        isLoading = true;
+        const nextRecords = allRecords.slice(displayedRecords, displayedRecords + recordsPerPage);
+        
+        console.log('載入資料:', {
+          從: displayedRecords,
+          到: displayedRecords + recordsPerPage,
+          實際載入: nextRecords.length
+        });
+        
+        if (nextRecords.length > 0) {
+          const resultsDiv = document.getElementById("searchResults");
+          let existingGrid = resultsDiv.querySelector('.record-grid');
+          
+          if (!existingGrid) {
+            existingGrid = document.createElement('div');
+            existingGrid.className = 'record-grid';
+            resultsDiv.appendChild(existingGrid);
+          }
+          
+          nextRecords.forEach((record, index) => {
+            const efficiencyData = record.efficiency_data || [];
+            const maxEfficiency = efficiencyData.length > 0 
+              ? Math.max(...efficiencyData.map(d => d.efficiency)) 
+              : "N/A";
+            const firstVin = efficiencyData.length > 0 && efficiencyData[0].vin !== undefined 
+              ? efficiencyData[0].vin 
+              : "N/A";
+            const firstVout = efficiencyData.length > 0 && efficiencyData[0].vout !== undefined 
+              ? efficiencyData[0].vout 
+              : "N/A";
+            const checked = selectedSeriesNumbers.includes(record.series_number) ? "checked" : "";
+            
+            const cardElement = document.createElement('div');
+            cardElement.className = 'record-item';
+            cardElement.innerHTML = `
+              <input type="checkbox" style="margin-right:8px;transform:scale(1.3);vertical-align:middle;" 
+                     onchange="toggleSeriesSelection(${record.series_number}, this.checked)" ${checked} />
+              <div class="record-title">${displayedRecords + index + 1}. ${record.pcb_name} - ${record.powerstage_name}</div>
+              <div style="font-size:12px;color:#666;margin-bottom:8px;">Series Number: ${record.series_number}</div>
+              <div class="record-details">
+                📊 Phases: ${record.phase_count}<br>
+                🔄 Frequency: ${record.frequency} kHz<br>
+                🔌 Inductor: ${record.inductor_value} nH<br>
+                👤 By: ${record.user_name}<br>
+                📅 ${new Date(record.upload_date).toLocaleDateString()}<br>
+                🔋 Vin: ${firstVin} | ⚡ Vout: ${firstVout}<br>
+                🏆 Max: ${maxEfficiency !== "N/A" ? maxEfficiency.toFixed(2) : "N/A"}%
+              </div>
+              <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${record.series_number})">
+                📥 Download Data
+              </button>
+            `;
+            existingGrid.appendChild(cardElement);
+          });
+          
+          displayedRecords += nextRecords.length;
+          
+          console.log('載入完成後狀態:', {
+            displayedRecords,
+            totalRecords: allRecords.length,
+            hasMore: displayedRecords < allRecords.length
+          });
+          
+          // 如果還有更多資料，顯示載入提示
+          if (displayedRecords < allRecords.length) {
+            showLoadMoreIndicator();
+            
+            // 延遲檢查是否需要自動載入更多（用於頁面高度不足的情況）
+            setTimeout(() => {
+              const { scrollHeight, clientHeight } = document.documentElement;
+              console.log('自動檢查是否需要載入更多:', {
+                scrollHeight,
+                clientHeight,
+                needsMore: scrollHeight <= clientHeight + 200,
+                hasMore: displayedRecords < allRecords.length,
+                isLoading
+              });
+              
+              if (scrollHeight <= clientHeight + 200 && !isLoading && displayedRecords < allRecords.length) {
+                console.log('頁面高度不足，自動載入更多資料');
+                loadMoreRecords();
+              }
+            }, 100);
+          } else {
+            hideLoadMoreIndicator();
+          }
+        }
+        
+        isLoading = false;
+      }
+
+      // 顯示載入更多提示
+      function showLoadMoreIndicator() {
+        const resultsDiv = document.getElementById("searchResults");
+        let indicator = resultsDiv.querySelector('.load-more-indicator');
+        
+        if (!indicator) {
+          indicator = document.createElement('div');
+          indicator.className = 'load-more-indicator';
+          indicator.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #666; font-style: italic;">
+              📥 向下滾動載入更多資料... (${displayedRecords}/${allRecords.length})
+              <br><br>
+              <button class="chart-btn" onclick="loadMoreRecords()" style="margin-top: 10px;">
+                手動載入更多
+              </button>
+            </div>
+          `;
+          resultsDiv.appendChild(indicator);
+        } else {
+          indicator.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #666; font-style: italic;">
+              📥 向下滾動載入更多資料... (${displayedRecords}/${allRecords.length})
+              <br><br>
+              <button class="chart-btn" onclick="loadMoreRecords()" style="margin-top: 10px;">
+                手動載入更多
+              </button>
+            </div>
+          `;
+        }
+      }
+
+      // 隱藏載入更多提示
+      function hideLoadMoreIndicator() {
+        const resultsDiv = document.getElementById("searchResults");
+        const indicator = resultsDiv.querySelector('.load-more-indicator');
+        if (indicator) {
+          indicator.remove();
+        }
+      }
+
+      // 滾動事件監聽
+      function handleScroll() {
+        // 只在 search 頁面且有更多資料時才觸發
+        if (!document.getElementById("search").classList.contains("active")) {
+          return;
+        }
+        
+        const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+        
+        console.log('滾動檢測:', {
+          scrollTop,
+          scrollHeight,
+          clientHeight,
+          差距: scrollHeight - (scrollTop + clientHeight),
+          hasMore: displayedRecords < allRecords.length,
+          isLoading
+        });
+        
+        // 當滾動到距離底部 300px 時觸發載入，或者如果頁面本身就不夠高
+        if ((scrollTop + clientHeight >= scrollHeight - 300 || scrollHeight <= clientHeight + 100) 
+            && !isLoading && displayedRecords < allRecords.length) {
+          console.log('觸發滾動載入:', displayedRecords, '/', allRecords.length);
+          loadMoreRecords();
+        }
+      }
+
       // 搜尋記錄
       async function searchRecords() {
         const params = new URLSearchParams({
@@ -972,7 +1171,24 @@
         try {
           const response = await fetch(`/api/search?${params}`);
           const records = await response.json();
-          displaySearchResults(records);
+          
+          // 重置狀態
+          allRecords = records;
+          displayedRecords = 0;
+          isLoading = false;
+          
+          // 清空搜尋結果區域
+          const resultsDiv = document.getElementById("searchResults");
+          resultsDiv.innerHTML = '';
+          
+          // 如果沒有結果
+          if (records.length === 0) {
+            resultsDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;"><h3>🔍 No matching records found</h3></div>';
+            return;
+          }
+          
+          // 載入第一批資料
+          loadMoreRecords();
         } catch (error) {
           console.error("搜尋失敗:", error);
           showNotification("搜尋失敗", "error");
@@ -1723,6 +1939,9 @@
       // 頁面載入完成初始化
       document.addEventListener("DOMContentLoaded", function () {
         loadRecordOptions();
+        
+        // 新增滾動事件監聽器
+        window.addEventListener('scroll', handleScroll);
 
         // 檢查是否已經是管理者
         fetch("/admin/backup")
