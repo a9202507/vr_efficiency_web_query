@@ -289,22 +289,27 @@ def download_csv(series_number):
     try:
         conn = sqlite3.connect('data/vr_efficiency.sqlite')
         cursor = conn.cursor()
-        # 取得 efficiency_table 資料
-        cursor.execute('SELECT * FROM efficiency_table WHERE series_number = ?', (series_number,))
+        # 先從 information_table 取得 user_id
+        cursor.execute('SELECT user_ID, pcb_name, powerstage_name, phase_count, frequency, inductor_value, imax, upload_date FROM information_table WHERE series_number = ?', (series_number,))
+        info = cursor.fetchone()
+        if not info:
+            return jsonify({'error': 'No data found'}), 404
+        
+        user_id = info[0]
+        # 取得該 user_id 的所有 efficiency_table 資料
+        cursor.execute('SELECT * FROM efficiency_table WHERE user_id = ? ORDER BY iout', (user_id,))
         rows = cursor.fetchall()
         columns = [desc[0] for desc in cursor.description]
-        # 取得 information_table 資料
-        cursor.execute('SELECT pcb_name, powerstage_name, phase_count, frequency, inductor_value, imax, upload_date FROM information_table WHERE series_number = ?', (series_number,))
-        info = cursor.fetchone()
         # 取得第一筆 vin/vout
         vin, vout = None, None
         if rows:
             vin = rows[0][2] if len(rows[0]) > 2 else None
             vout = rows[0][4] if len(rows[0]) > 4 else None
         conn.close()
-        if not rows or not info:
+        if not rows:
             return jsonify({'error': 'No data found'}), 404
-        pcb_name, powerstage_name, phase_count, frequency, inductor_value, imax, upload_date = info
+
+        pcb_name, powerstage_name, phase_count, frequency, inductor_value, imax, upload_date = info[1:]
         # 處理 upload_date 格式
         if not upload_date or str(upload_date).lower() == 'none' or str(upload_date).lower() == 'nan':
             date_str = 'unknown'
