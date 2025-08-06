@@ -296,8 +296,15 @@ def download_csv(series_number):
             return jsonify({'error': 'No data found'}), 404
         
         user_id = info[0]
-        # 取得該 user_id 的所有 efficiency_table 資料
-        cursor.execute('SELECT * FROM efficiency_table WHERE user_id = ? ORDER BY iout', (user_id,))
+        # 只取得 efficiency_table 的必要欄位，並使用上傳時的欄位名稱
+        cursor.execute('''
+            SELECT istep as "Istep", vin as "Vin", iin as "Iin", vout as "Vout", 
+                   remote_vout_sense as "remote Vout sense", iout as "Iout", 
+                   efficiency as "Efficiency", efficiency_remote as "Efficiency_remote"
+            FROM efficiency_table
+            WHERE user_id = ? 
+            ORDER BY iout
+        ''', (user_id,))
         rows = cursor.fetchall()
         columns = [desc[0] for desc in cursor.description]
         # 取得第一筆 vin/vout
