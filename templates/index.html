@@ -695,6 +695,18 @@
               <input type="number" id="searchVout" placeholder="e.g., 1.8" />
             </div>
             <div class="form-group">
+              <label>TLVR</label>
+              <select id="searchTlvr">
+                <option value="">All</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Max Current (A)</label>
+              <input type="number" id="searchMaxCurrent" placeholder="e.g., 80" />
+            </div>
+            <div class="form-group">
               <button class="btn-primary" onclick="searchRecords()">
                 🔍 Search Records
               </button>
@@ -1039,12 +1051,17 @@
             const maxEfficiency = efficiencyData.length > 0 
               ? Math.max(...efficiencyData.map(d => d.efficiency)) 
               : "N/A";
+            const fullLoadEfficiency = efficiencyData.length > 0 
+              ? efficiencyData[efficiencyData.length - 1]?.efficiency || "N/A" 
+              : "N/A";
             const firstVin = efficiencyData.length > 0 && efficiencyData[0].vin !== undefined 
               ? efficiencyData[0].vin 
               : "N/A";
             const firstVout = efficiencyData.length > 0 && efficiencyData[0].vout !== undefined 
               ? efficiencyData[0].vout 
               : "N/A";
+            const maxCurrent = record.imax || "N/A";
+            const tlvrStatus = record.tlvr === "yes" ? "✅ Yes" : "❌ No";
             const checked = selectedSeriesNumbers.includes(record.series_number) ? "checked" : "";
             
             const cardElement = document.createElement('div');
@@ -1058,10 +1075,13 @@
                 📊 Phases: ${record.phase_count}<br>
                 🔄 Frequency: ${record.frequency} kHz<br>
                 🔌 Inductor: ${record.inductor_value} nH<br>
+                ⚡ Max Current: ${maxCurrent} A<br>
+                🔧 TLVR: ${tlvrStatus}<br>
                 👤 By: ${record.user_name}<br>
                 📅 ${new Date(record.upload_date).toLocaleDateString()}<br>
                 🔋 Vin: ${firstVin} | ⚡ Vout: ${firstVout}<br>
-                🏆 Max: ${maxEfficiency !== "N/A" ? maxEfficiency.toFixed(2) : "N/A"}%
+                🏆 Max: ${maxEfficiency !== "N/A" ? maxEfficiency.toFixed(2) : "N/A"}%<br>
+                📈 Full Load: ${fullLoadEfficiency !== "N/A" ? fullLoadEfficiency.toFixed(2) : "N/A"}%
               </div>
               <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${record.series_number})">
                 📥 Download Data
@@ -1193,6 +1213,15 @@
           voutMax = (vout * 1.1).toFixed(2);
         }
         
+        // 計算 max current 的 ±20% 範圍
+        const maxCurrentValue = document.getElementById("searchMaxCurrent").value;
+        let imaxMin = '', imaxMax = '';
+        if (maxCurrentValue && !isNaN(maxCurrentValue)) {
+          const maxCurrent = parseFloat(maxCurrentValue);
+          imaxMin = (maxCurrent * 0.8).toFixed(2);
+          imaxMax = (maxCurrent * 1.2).toFixed(2);
+        }
+        
         const params = new URLSearchParams({
           powerstage_name: document.getElementById("searchPowerstage").value,
           phase_count: document.getElementById("searchPhase").value,
@@ -1203,6 +1232,9 @@
           vin_max: vinMax,
           vout_min: voutMin,
           vout_max: voutMax,
+          tlvr: document.getElementById("searchTlvr").value,
+          imax_min: imaxMin,
+          imax_max: imaxMax,
         });
 
         try {

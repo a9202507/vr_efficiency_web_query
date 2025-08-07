@@ -204,6 +204,9 @@ def search_records():
     vin_max = request.args.get('vin_max')
     vout_min = request.args.get('vout_min')
     vout_max = request.args.get('vout_max')
+    tlvr = request.args.get('tlvr')
+    imax_min = request.args.get('imax_min')
+    imax_max = request.args.get('imax_max')
     
     conn = sqlite3.connect('data/vr_efficiency.sqlite')
     conn.row_factory = sqlite3.Row
@@ -243,6 +246,18 @@ def search_records():
     if vout_min and vout_max:
         query += " AND e.vout BETWEEN ? AND ?"
         params.extend([float(vout_min), float(vout_max)])
+    
+    # 新增 TLVR 條件
+    if tlvr:
+        table_prefix = "i." if (vin_min or vin_max or vout_min or vout_max) else ""
+        query += f" AND {table_prefix}tlvr = ?"
+        params.append(tlvr)
+    
+    # 新增 Max Current 範圍條件
+    if imax_min and imax_max:
+        table_prefix = "i." if (vin_min or vin_max or vout_min or vout_max) else ""
+        query += f" AND {table_prefix}imax BETWEEN ? AND ?"
+        params.extend([float(imax_min), float(imax_max)])
     
     query += " ORDER BY i.upload_date DESC" if (vin_min or vin_max or vout_min or vout_max) else " ORDER BY upload_date DESC"
     
