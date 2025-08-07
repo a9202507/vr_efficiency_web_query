@@ -1067,6 +1067,7 @@
               : "N/A";
             const maxCurrent = record.imax || "N/A";
             const tlvrStatus = record.tlvr === "yes" ? "✅ Yes" : "❌ No";
+            const remarks = record.notice ? record.notice : "No remarks";
             const checked = selectedSeriesNumbers.includes(record.series_number) ? "checked" : "";
             
             const cardElement = document.createElement('div');
@@ -1086,7 +1087,8 @@
                 📅 ${new Date(record.upload_date).toLocaleDateString()}<br>
                 🔋 Vin: ${firstVin} | ⚡ Vout: ${firstVout}<br>
                 🏆 Max: ${maxEfficiency !== "N/A" ? maxEfficiency.toFixed(2) : "N/A"}%<br>
-                📈 Full Load: ${fullLoadEfficiency !== "N/A" ? fullLoadEfficiency.toFixed(2) : "N/A"}%
+                📈 Full Load: ${fullLoadEfficiency !== "N/A" ? fullLoadEfficiency.toFixed(2) : "N/A"}%<br>
+                📝 Remarks: ${remarks}
               </div>
               <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${record.series_number})">
                 📥 Download Data
@@ -1300,6 +1302,9 @@
                   efficiencyData.length > 0 && efficiencyData[0].vout !== undefined
                     ? efficiencyData[0].vout
                     : "N/A";
+                const maxCurrent = record.imax || "N/A";
+                const tlvrStatus = record.tlvr === "yes" ? "✅ Yes" : "❌ No";
+                const remarks = record.notice ? record.notice : "No remarks";
                 const checked = selectedSeriesNumbers.includes(record.series_number)
                   ? "checked"
                   : "";
@@ -1318,14 +1323,22 @@
                             📊 Phases: ${record.phase_count}<br>
                             🔄 Frequency: ${record.frequency} kHz<br>
                             🔌 Inductor: ${record.inductor_value} nH<br>
-                            👤 By: ${record.user_name}<br>
+                            ⚡ Max Current: ${maxCurrent} A<br>
+                            � TLVR: ${tlvrStatus}<br>
+                            �👤 By: ${record.user_name}<br>
                             📅 ${new Date(record.upload_date).toLocaleDateString()}<br>
                             🔋 Vin: ${firstVin} | ⚡ Vout: ${firstVout}<br>
                             🏆 Max: ${
                               maxEfficiency !== "N/A"
                                 ? maxEfficiency.toFixed(2)
                                 : "N/A"
-                            }%
+                            }%<br>
+                            📈 Full Load: ${
+                              fullLoadEfficiency !== "N/A"
+                                ? fullLoadEfficiency.toFixed(2)
+                                : "N/A"
+                            }%<br>
+                            📝 Remarks: ${remarks}
                         </div>
                         <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${
                           record.series_number
