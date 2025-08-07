@@ -632,6 +632,21 @@ def get_series_numbers():
     except Exception as e:
         return jsonify({'error': f'Failed to fetch series numbers: {str(e)}'}), 500
 
+@app.route('/api/powerstage-options', methods=['GET'])
+def get_powerstage_options():
+    try:
+        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        cursor = conn.cursor()
+
+        # 取得所有不重複的 powerstage_name
+        cursor.execute('SELECT DISTINCT powerstage_name FROM information_table WHERE powerstage_name IS NOT NULL ORDER BY powerstage_name')
+        powerstage_names = [row[0] for row in cursor.fetchall()]
+
+        conn.close()
+        return jsonify(powerstage_names)
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch powerstage options: {str(e)}'}), 500
+
 # WebSocket 事件處理
 @socketio.on('connect')
 def handle_connect():

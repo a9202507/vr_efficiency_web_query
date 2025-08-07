@@ -668,7 +668,12 @@
                 type="text"
                 id="searchPowerstage"
                 placeholder="e.g., TDA22594A"
+                list="powerstageOptions"
+                autocomplete="off"
               />
+              <datalist id="powerstageOptions">
+                <!-- Options will be dynamically populated -->
+              </datalist>
             </div>
             <div class="form-group">
               <label>Phase Count</label>
@@ -2053,6 +2058,7 @@
       // 頁面載入完成初始化
       document.addEventListener("DOMContentLoaded", function () {
         loadRecordOptions();
+        loadPowerstageOptions(); // 載入 Power Stage Name 選項
         
         // 新增滾動事件監聽器
         window.addEventListener('scroll', handleScroll);
@@ -2107,6 +2113,25 @@
           }
         } catch (error) {
           alert("刪除記錄時發生錯誤");
+        }
+      }
+
+      // 載入 Power Stage Name 選項
+      async function loadPowerstageOptions() {
+        try {
+          const response = await fetch("/api/powerstage-options");
+          const powerstageNames = await response.json();
+
+          const datalist = document.getElementById("powerstageOptions");
+          datalist.innerHTML = '';
+
+          powerstageNames.forEach((name) => {
+            const option = document.createElement("option");
+            option.value = name;
+            datalist.appendChild(option);
+          });
+        } catch (error) {
+          console.error("Failed to load powerstage options:", error);
         }
       }
 
