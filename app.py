@@ -662,6 +662,49 @@ def handle_join_room(data):
     join_room(room)
     emit('joined_room', {'room': room})
 
+@app.route('/admin/update-information/<int:user_id>', methods=['POST'])
+@admin_required
+def update_information(user_id):
+    # 取得所有可修改欄位
+    allowed_fields = [
+        'user_name', 'pcb_name', 'powerstage_name', 'phase_count', 'frequency',
+        'inductor_value', 'tlvr', 'imax', 'upload_date', 'notice', 'series_number'
+    ]
+    update_data = request.json
+    if not update_data:
+        return jsonify({'error': '未提供更新資料'}), 400
+
+    # 檢查欄位是否合法
+    columns = get_table_columns('information_table')
+    update_fields = {k: v for k, v in update_data.items() if k in allowed_fields and k in columns}
+    if not update_fields:
+        return jsonify({'error': '沒有合法的欄位可更新'}), 400
+
+    set_clause = ', '.join([f"{k} = ?" for k in update_fields.keys()])
+    values = list(update_fields.values())
+    values.append(user_id)
+
+    try:
+        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        cursor = conn.cursor()
+        cursor.execute(f'''
+            UPDATE information_table
+            SET {set_clause}
+            WHERE user_ID = ?
+        ''', values)
+        conn.commit()
+        conn.close()
+        if cursor.rowcount == 0:
+            return jsonify({'error': '找不到指定 user_ID'}), 404
+        return jsonify({'success': True, 'message': '資料已更新'})
+    except Exception as e:
+        return jsonify({'error': f'更新失敗: {str(e)}'}), 500
+
+@app.route('/admin')
+@admin_required
+def admin_page():
+    return render_template('admin.html')
+
 if __name__ == '__main__':
     # 確保目錄存在
     if not os.path.exists('data'):

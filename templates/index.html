@@ -796,6 +796,76 @@
                 Delete Record
               </button>
             </div>
+
+            <!-- 新增：訂正 information_table 資料 -->
+            <div class="admin-card">
+              <h3>✏️ Edit information_table Record</h3>
+              <p>訂正資料（依 user_ID）</p>
+              <div style="margin-bottom:10px;">
+                <input
+                  type="number"
+                  id="editUserId"
+                  placeholder="user_ID"
+                  style="
+                    width: 100%;
+                    padding: 10px;
+                    border-radius: 8px;
+                    border: 1px solid #ddd;
+                  "
+              />
+              </div>
+              <div style="margin-bottom:10px;">
+                <select
+                  id="editField"
+                  style="
+                    width: 100%;
+                    padding: 10px;
+                    border-radius: 8px;
+                    border: 1px solid #ddd;
+                  "
+                >
+                  <option value="">選擇欄位</option>
+                  <option value="user_name">user_name</option>
+                  <option value="pcb_name">pcb_name</option>
+                  <option value="powerstage_name">powerstage_name</option>
+                  <option value="phase_count">phase_count</option>
+                  <option value="frequency">frequency</option>
+                  <option value="inductor_value">inductor_value</option>
+                  <option value="tlvr">tlvr</option>
+                  <option value="imax">imax</option>
+                  <option value="upload_date">upload_date</option>
+                  <option value="notice">notice</option>
+                  <option value="series_number">series_number</option>
+                </select>
+              </div>
+              <div style="margin-bottom:10px;">
+                <input
+                  type="text"
+                  id="editValue"
+                  placeholder="新值"
+                  style="
+                    width: 100%;
+                    padding: 10px;
+                    border-radius: 8px;
+                    border: 1px solid #ddd;
+                  "
+              />
+              </div>
+              <button
+                class="btn-success"
+                onclick="editInformationRecord()"
+              >
+                訂正資料
+              </button>
+              <div id="editInfoStatus" style="margin-top:10px;font-size:13px;"></div>
+            </div>
+          </div>
+
+          <!-- 新增：information_table 全表編輯區 -->
+          <div style="margin-top:40px;">
+            <h3 style="margin-bottom:15px;">📝 Edit All information_table Records</h3>
+            <div id="infoTableStatus" style="margin-bottom:10px;color:#ee5a24;"></div>
+            <div id="informationTableContainer" style="overflow-x:auto;"></div>
           </div>
         </div>
       </div>
@@ -934,6 +1004,8 @@
           loadLatestRecords(); // 自動載入最新資料
         } else if (tabName === "charts") {
           loadRecordOptions();
+        } else if (tabName === "admin") {
+          loadInformationTable();
         }
       }
 
@@ -2032,6 +2104,555 @@
         }
       }
 
+      // 訂正 information_table 資料
+      async function editInformationRecord() {
+        const userId = document.getElementById("editUserId").value;
+        const field = document.getElementById("editField").value;
+        const value = document.getElementById("editValue").value;
+        const statusDiv = document.getElementById("editInfoStatus");
+
+        if (!userId || !field || value === "") {
+          statusDiv.textContent = "請填寫完整資訊";
+          statusDiv.style.color = "#ee5a24";
+          return;
+        }
+
+        statusDiv.textContent = "⏳ 處理中...";
+        statusDiv.style.color = "#333";
+
+        try {
+          const payload = {};
+          payload[field] = field === "phase_count" || field === "frequency" || field === "inductor_value" || field === "imax" || field === "series_number"
+            ? Number(value)
+            : value;
+          const response = await fetch(`/admin/update-information/${userId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const result = await response.json();
+          if (result.success) {
+            statusDiv.textContent = "✅ 資料已訂正";
+            statusDiv.style.color = "#43e97b";
+            showNotification("資料訂正成功");
+          } else {
+            statusDiv.textContent = "❌ " + (result.error || "訂正失敗");
+            statusDiv.style.color = "#ee5a24";
+            showNotification(result.error || "訂正失敗", "error");
+          }
+        } catch (e) {
+          statusDiv.textContent = "❌ 訂正失敗";
+          statusDiv.style.color = "#ee5a24";
+          showNotification("訂正失敗", "error");
+        }
+      }
+
+      // 取得整個 information_table 並渲染
+      async function loadInformationTable() {
+        const container = document.getElementById("informationTableContainer");
+        const statusDiv = document.getElementById("infoTableStatus");
+        statusDiv.textContent = "";
+        container.innerHTML = "⏳ Loading...";
+        try {
+          const res = await fetch("/api/search");
+          const records = await res.json();
+          if (!records.length) {
+            container.innerHTML = "<div style='padding:20px;'>No records found.</div>";
+            return;
+          }
+          // 欄位列表
+          const columns = [
+            "user_ID", "user_name", "pcb_name", "powerstage_name", "phase_count",
+            "frequency", "inductor_value", "tlvr", "imax", "upload_date", "notice", "series_number"
+          ];
+          // 表頭
+          let html = `<table style="border-collapse:collapse;width:100%;background:#fff;">
+            <thead>
+              <tr>
+                ${columns.map(col => `<th style="border:1px solid #ddd;padding:6px;background:#f8f9fa;">${col}</th>`).join("")}
+                <th style="border:1px solid #ddd;padding:6px;background:#f8f9fa;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+          `;
+          // 每一列
+          records.forEach((row, idx) => {
+            html += `<tr>`;
+            columns.forEach(col => {
+              // user_ID不可編輯
+              if (col === "user_ID") {
+                html += `<td style="border:1px solid #ddd;padding:6px;">${row[col]}</td>`;
+              } else {
+                html += `<td style="border:1px solid #ddd;padding:6px;">
+                  <input type="text" value="${row[col] !== null ? row[col] : ""}" 
+                    style="width:120px;padding:4px;border-radius:4px;border:1px solid #ccc;"
+                    id="infoEdit_${row.user_ID}_${col}" />
+                </td>`;
+              }
+            });
+            html += `<td style="border:1px solid #ddd;padding:6px;">
+              <button class="btn-success btn-small" onclick="saveInfoRow(${row.user_ID})">儲存</button>
+            </td></tr>`;
+          });
+          html += `</tbody></table>`;
+          container.innerHTML = html;
+        } catch (e) {
+          container.innerHTML = "<div style='padding:20px;color:#ee5a24;'>載入失敗</div>";
+        }
+      }
+
+      // 儲存單列
+      async function saveInfoRow(userId) {
+        const statusDiv = document.getElementById("infoTableStatus");
+        statusDiv.textContent = "";
+        // 欄位列表
+        const columns = [
+          "user_name", "pcb_name", "powerstage_name", "phase_count",
+          "frequency", "inductor_value", "tlvr", "imax", "upload_date", "notice", "series_number"
+        ];
+        // 收集資料
+        const payload = {};
+        columns.forEach(col => {
+          let val = document.getElementById(`infoEdit_${userId}_${col}`).value;
+          if (["phase_count","frequency","inductor_value","imax","series_number"].includes(col)) {
+            val = val === "" ? null : Number(val);
+          }
+          payload[col] = val;
+        });
+        statusDiv.textContent = "⏳ 儲存中...";
+        try {
+          const res = await fetch(`/admin/update-information/${userId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const result = await res.json();
+          if (result.success) {
+            statusDiv.textContent = "✅ 資料已更新";
+            statusDiv.style.color = "#43e97b";
+            showNotification("資料已更新");
+          } else {
+            statusDiv.textContent = "❌ " + (result.error || "更新失敗");
+            statusDiv.style.color = "#ee5a24";
+            showNotification(result.error || "更新失敗", "error");
+          }
+        } catch (e) {
+          statusDiv.textContent = "❌ 更新失敗";
+          statusDiv.style.color = "#ee5a24";
+          showNotification("更新失敗", "error");
+        }
+      }
+
+      // 管理者頁面切換時自動載入 table
+      function switchTab(tabName) {
+        document.querySelectorAll(".tab-content").forEach((content) => {
+          content.classList.remove("active");
+        });
+
+        document.querySelectorAll(".tab").forEach((tab) => {
+          tab.classList.remove("active");
+        });
+
+        document.getElementById(tabName).classList.add("active");
+        event.target.classList.add("active");
+
+        if (tabName === "search") {
+          loadLatestRecords(); // 自動載入最新資料
+        } else if (tabName === "charts") {
+          loadRecordOptions();
+        } else if (tabName === "admin") {
+          loadInformationTable();
+        }
+      }
+
+      // 管理者功能
+      function toggleAdmin() {
+        const isAdmin =
+          document.getElementById("adminTab").style.display !== "none";
+
+        if (isAdmin) {
+          // 登出管理者
+          adminLogout();
+        } else {
+          // 顯示登入對話框
+          document.getElementById("adminLoginModal").style.display = "block";
+        }
+      }
+
+      async function adminLogin() {
+        const password = document.getElementById("adminPassword").value;
+
+        try {
+          const response = await fetch("/admin/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ password }),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            document.getElementById("adminTab").style.display = "block";
+            document.getElementById("adminToggle").textContent = "管理者登出";
+            document.getElementById("adminToggle").style.background =
+              "linear-gradient(45deg, #0A8276, #065b53)";
+            closeModal("adminLoginModal");
+            showNotification("管理者登入成功");
+          } else {
+            showNotification("密碼錯誤", "error");
+          }
+        } catch (error) {
+          showNotification("登入失敗", "error");
+        }
+      }
+
+      async function adminLogout() {
+        try {
+          await fetch("/admin/logout", { method: "POST" });
+          document.getElementById("adminTab").style.display = "none";
+          document.getElementById("adminToggle").textContent = "管理者登入";
+          document.getElementById("adminToggle").style.background =
+            "linear-gradient(45deg, #ff6b6b, #ee5a24)";
+          showNotification("已登出管理者模式");
+
+          // 如果在管理者頁面，切換到上傳頁面
+          if (document.getElementById("admin").classList.contains("active")) {
+            switchTab("upload");
+          }
+        } catch (error) {
+          console.error("登出失敗:", error);
+        }
+      }
+
+      // 備份資料庫
+      async function backupDatabase() {
+        try {
+          const response = await fetch("/admin/backup");
+          if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = response.headers
+              .get("Content-Disposition")
+              .split("filename=")[1];
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            showNotification("資料庫備份下載完成");
+          } else {
+            showNotification("備份失敗", "error");
+          }
+        } catch (error) {
+          console.error("備份失敗:", error);
+          showNotification("備份失敗", "error");
+        }
+      }
+
+      // 還原資料庫
+      async function restoreDatabase() {
+        const fileInput = document.getElementById("restoreFile");
+        const file = fileInput.files[0];
+
+        if (!file) {
+          showNotification("請選擇備份檔案", "error");
+          return;
+        }
+
+        if (!confirm("確定要還原資料庫嗎？此操作將覆蓋現有數據！")) {
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          const response = await fetch("/admin/restore", {
+            method: "POST",
+            body: formData,
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            showNotification("資料庫還原成功");
+            fileInput.value = "";
+            loadRecordOptions();
+          } else {
+            showNotification(result.error, "error");
+          }
+        } catch (error) {
+          console.error("還原失敗:", error);
+          showNotification("還原失敗", "error");
+        }
+      }
+
+      // 顯示資料表管理器
+      function showTableManager() {
+        document.getElementById("tableManagerModal").style.display = "block";
+      }
+
+      // 載入資料表結構
+      async function loadTableStructure() {
+        const tableName = document.getElementById("tableSelector").value;
+        if (!tableName) return;
+
+        try {
+          const response = await fetch(`/admin/table-structure/${tableName}`);
+          const columns = await response.json();
+
+          const structureDiv = document.getElementById("tableStructure");
+          structureDiv.innerHTML = `
+                    <div class="table-structure">
+                        <h4>${tableName} 欄位結構</h4>
+                        ${columns
+                          .map(
+                            (col) => `
+                            <div class="column-item">
+                                <div class="column-info">
+                                    <span class="column-name">${col.name}</span>
+                                    <span class="column-type">${col.type}</span>
+                                    ${
+                                      col.pk
+                                        ? '<span style="color: #dc3545; font-size: 12px;">[主鍵]</span>'
+                                        : ""
+                                    }
+                                    ${
+                                      col.notnull
+                                        ? '<span style="color: #28a745; font-size: 12px;">[必填]</span>'
+                                        : ""
+                                    }
+                                </div>
+                                ${
+                                  !col.pk
+                                    ? `<button class="btn-danger btn-small" onclick="removeColumn('${tableName}', '${col.name}')">刪除</button>`
+                                    : ""
+                                }
+                            </div>
+                        `
+                          )
+                          .join("")}
+                    </div>
+                `;
+        } catch (error) {
+          console.error("載入資料表結構失敗:", error);
+          showNotification("載入資料表結構失敗", "error");
+        }
+      }
+
+      // 新增欄位
+      async function addColumn() {
+        const tableName = document.getElementById("tableSelector").value;
+        const columnName = document.getElementById("newColumnName").value;
+        const columnType = document.getElementById("newColumnType").value;
+
+        if (!tableName || !columnName) {
+          showNotification("請填寫完整資訊", "error");
+          return;
+        }
+
+        try {
+          const response = await fetch("/admin/add-column", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              table_name: tableName,
+              column_name: columnName,
+              column_type: columnType,
+            }),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            showNotification(result.message);
+            document.getElementById("newColumnName").value = "";
+            loadTableStructure(); // 重新載入結構
+          } else {
+            showNotification(result.error, "error");
+          }
+        } catch (error) {
+          console.error("新增欄位失敗:", error);
+          showNotification("新增欄位失敗", "error");
+        }
+      }
+
+      // 刪除欄位
+      async function removeColumn(tableName, columnName) {
+        if (!confirm(`確定要刪除欄位 "${columnName}" 嗎？此操作無法復原！`)) {
+          return;
+        }
+
+        try {
+          const response = await fetch("/admin/remove-column", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              table_name: tableName,
+              column_name: columnName,
+            }),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            showNotification(result.message);
+            loadTableStructure(); // 重新載入結構
+          } else {
+            showNotification(result.error, "error");
+          }
+        } catch (error) {
+          console.error("刪除欄位失敗:", error);
+          showNotification("刪除欄位失敗", "error");
+        }
+      }
+
+      // 訂正 information_table 資料
+      async function editInformationRecord() {
+        const userId = document.getElementById("editUserId").value;
+        const field = document.getElementById("editField").value;
+        const value = document.getElementById("editValue").value;
+        const statusDiv = document.getElementById("editInfoStatus");
+
+        if (!userId || !field || value === "") {
+          statusDiv.textContent = "請填寫完整資訊";
+          statusDiv.style.color = "#ee5a24";
+          return;
+        }
+
+        statusDiv.textContent = "⏳ 處理中...";
+        statusDiv.style.color = "#333";
+
+        try {
+          const payload = {};
+          payload[field] = field === "phase_count" || field === "frequency" || field === "inductor_value" || field === "imax" || field === "series_number"
+            ? Number(value)
+            : value;
+          const response = await fetch(`/admin/update-information/${userId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const result = await response.json();
+          if (result.success) {
+            statusDiv.textContent = "✅ 資料已訂正";
+            statusDiv.style.color = "#43e97b";
+            showNotification("資料訂正成功");
+          } else {
+            statusDiv.textContent = "❌ " + (result.error || "訂正失敗");
+            statusDiv.style.color = "#ee5a24";
+            showNotification(result.error || "訂正失敗", "error");
+          }
+        } catch (e) {
+          statusDiv.textContent = "❌ 訂正失敗";
+          statusDiv.style.color = "#ee5a24";
+          showNotification("訂正失敗", "error");
+        }
+      }
+
+      // 取得整個 information_table 並渲染
+      async function loadInformationTable() {
+        const container = document.getElementById("informationTableContainer");
+        const statusDiv = document.getElementById("infoTableStatus");
+        statusDiv.textContent = "";
+        container.innerHTML = "⏳ Loading...";
+        try {
+          const res = await fetch("/api/search");
+          const records = await res.json();
+          if (!records.length) {
+            container.innerHTML = "<div style='padding:20px;'>No records found.</div>";
+            return;
+          }
+          // 欄位列表
+          const columns = [
+            "user_ID", "user_name", "pcb_name", "powerstage_name", "phase_count",
+            "frequency", "inductor_value", "tlvr", "imax", "upload_date", "notice", "series_number"
+          ];
+          // 表頭
+          let html = `<table style="border-collapse:collapse;width:100%;background:#fff;">
+            <thead>
+              <tr>
+                ${columns.map(col => `<th style="border:1px solid #ddd;padding:6px;background:#f8f9fa;">${col}</th>`).join("")}
+                <th style="border:1px solid #ddd;padding:6px;background:#f8f9fa;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+          `;
+          // 每一列
+          records.forEach((row, idx) => {
+            html += `<tr>`;
+            columns.forEach(col => {
+              // user_ID不可編輯
+              if (col === "user_ID") {
+                html += `<td style="border:1px solid #ddd;padding:6px;">${row[col]}</td>`;
+              } else {
+                html += `<td style="border:1px solid #ddd;padding:6px;">
+                  <input type="text" value="${row[col] !== null ? row[col] : ""}" 
+                    style="width:120px;padding:4px;border-radius:4px;border:1px solid #ccc;"
+                    id="infoEdit_${row.user_ID}_${col}" />
+                </td>`;
+              }
+            });
+            html += `<td style="border:1px solid #ddd;padding:6px;">
+              <button class="btn-success btn-small" onclick="saveInfoRow(${row.user_ID})">儲存</button>
+            </td></tr>`;
+          });
+          html += `</tbody></table>`;
+          container.innerHTML = html;
+        } catch (e) {
+          container.innerHTML = "<div style='padding:20px;color:#ee5a24;'>載入失敗</div>";
+        }
+      }
+
+      // 儲存單列
+      async function saveInfoRow(userId) {
+        const statusDiv = document.getElementById("infoTableStatus");
+        statusDiv.textContent = "";
+        // 欄位列表
+        const columns = [
+          "user_name", "pcb_name", "powerstage_name", "phase_count",
+          "frequency", "inductor_value", "tlvr", "imax", "upload_date", "notice", "series_number"
+        ];
+        // 收集資料
+        const payload = {};
+        columns.forEach(col => {
+          let val = document.getElementById(`infoEdit_${userId}_${col}`).value;
+          if (["phase_count","frequency","inductor_value","imax","series_number"].includes(col)) {
+            val = val === "" ? null : Number(val);
+          }
+          payload[col] = val;
+        });
+        statusDiv.textContent = "⏳ 儲存中...";
+        try {
+          const res = await fetch(`/admin/update-information/${userId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const result = await res.json();
+          if (result.success) {
+            statusDiv.textContent = "✅ 資料已更新";
+            statusDiv.style.color = "#43e97b";
+            showNotification("資料已更新");
+          } else {
+            statusDiv.textContent = "❌ " + (result.error || "更新失敗");
+            statusDiv.style.color = "#ee5a24";
+            showNotification(result.error || "更新失敗", "error");
+          }
+        } catch (e) {
+          statusDiv.textContent = "❌ 更新失敗";
+          statusDiv.style.color = "#ee5a24";
+          showNotification("更新失敗", "error");
+        }
+      }
+
       // 模態框控制
       function closeModal(modalId) {
         document.getElementById(modalId).style.display = "none";
@@ -2063,7 +2684,7 @@
       document.querySelectorAll("#search input").forEach((input) => {
         input.addEventListener("keypress", function (e) {
           if (e.key === "Enter") {
-            searchRecords();
+                       searchRecords();
           }
         });
       });
