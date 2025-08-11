@@ -16,7 +16,7 @@
 
       body {
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg, #0A8276 0%, #065b53 100%);
+        background: linear-gradient(135deg, #0a8276 0%, #065b53 100%);
         min-height: 100vh;
         padding: 20px;
       }
@@ -35,7 +35,7 @@
         text-align: center;
         margin-bottom: 40px;
         padding-bottom: 20px;
-        border-bottom: 3px solid #0A8276;
+        border-bottom: 3px solid #0a8276;
       }
 
       .header h1 {
@@ -43,7 +43,7 @@
         font-size: 3em;
         margin-bottom: 10px;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-        background: linear-gradient(45deg, #0A8276, #065b53);
+        background: linear-gradient(45deg, #0a8276, #065b53);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
       }
@@ -99,7 +99,7 @@
       }
 
       .tab.active {
-        background: linear-gradient(45deg, #0A8276, #065b53);
+        background: linear-gradient(45deg, #0a8276, #065b53);
         color: white;
         transform: translateY(-3px);
         box-shadow: 0 8px 25px rgba(10, 130, 118, 0.4);
@@ -131,7 +131,7 @@
       }
 
       .form-container {
-        background: linear-gradient(135deg, #0A8276 0%, #065b53 100%);
+        background: linear-gradient(135deg, #0a8276 0%, #065b53 100%);
         padding: 40px;
         border-radius: 20px;
         margin-bottom: 30px;
@@ -184,7 +184,7 @@
         background: white;
         transform: scale(1.02);
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        border-color: #0A8276;
+        border-color: #0a8276;
       }
 
       .file-upload {
@@ -237,7 +237,7 @@
       }
 
       .search-container {
-        background: linear-gradient(135deg, #0A8276 0%, #065b53 100%);
+        background: linear-gradient(135deg, #0a8276 0%, #065b53 100%);
         padding: 35px;
         border-radius: 20px;
         margin-bottom: 30px;
@@ -292,10 +292,10 @@
       }
 
       .record-item:hover {
-        background: linear-gradient(90deg, #0A8276, #065b53);
+        background: linear-gradient(90deg, #0a8276, #065b53);
         color: white;
         transform: translateY(-5px);
-        border-color: #0A8276;
+        border-color: #0a8276;
         box-shadow: 0 10px 30px rgba(10, 130, 118, 0.3);
       }
 
@@ -709,7 +709,11 @@
             </div>
             <div class="form-group">
               <label>Max Current (A)</label>
-              <input type="number" id="searchMaxCurrent" placeholder="e.g., 80" />
+              <input
+                type="number"
+                id="searchMaxCurrent"
+                placeholder="e.g., 80"
+              />
             </div>
             <div class="form-group">
               <button class="btn-primary" onclick="searchRecords()">
@@ -728,9 +732,7 @@
             <button class="chart-btn" onclick="clearChart()">
               Clear Chart
             </button>
-            <button class="chart-btn" onclick="resetZoom()">
-              Reset Zoom
-            </button>
+            <button class="chart-btn" onclick="resetZoom()">Reset Zoom</button>
           </div>
           <canvas id="multiCompareChart" width="400" height="200"></canvas>
         </div>
@@ -759,16 +761,24 @@
               <h3>📥 Database Restore</h3>
               <p>Upload a backup file to restore the database</p>
               <div style="margin: 10px 0">
-                <label for="restoreFile" class="btn-primary" style="display: inline-block; cursor: pointer; margin: 0;">
+                <label
+                  for="restoreFile"
+                  class="btn-primary"
+                  style="display: inline-block; cursor: pointer; margin: 0"
+                >
                   📁 Choose File
                 </label>
                 <input
                   type="file"
                   id="restoreFile"
                   accept=".sqlite"
-                  style="display: none;"
+                  style="display: none"
                 />
-                <span id="restoreFileName" style="margin-left: 10px; font-size: 14px; color: #666;">No file selected</span>
+                <span
+                  id="restoreFileName"
+                  style="margin-left: 10px; font-size: 14px; color: #666"
+                  >No file selected</span
+                >
               </div>
               <button class="btn-primary" onclick="restoreDatabase()">
                 Restore Database
@@ -813,8 +823,8 @@
               >
                 <!-- Options will be dynamically populated -->
               </select>
-              <button 
-                class="btn-danger" 
+              <button
+                class="btn-danger"
                 onclick="deleteRecordBySeriesNumber()"
                 style="
                   background: linear-gradient(45deg, #dc3545, #c82333);
@@ -839,13 +849,38 @@
           </div>
 
           <!-- 新增：information_table 全表編輯區 -->
-          <div style="margin-top:40px;">
-            <h3 style="margin-bottom:15px;">📝 Edit All information_table Records</h3>
-            <div id="infoTableStatus" style="margin-bottom:10px;color:#ee5a24;"></div>
-            <div id="informationTableContainer" style="overflow-x:auto;"></div>
+          <div style="margin-top: 40px">
+            <h3 style="margin-bottom: 15px">
+              📝 Edit All information_table Records
+            </h3>
+            <div
+              id="infoTableStatus"
+              style="margin-bottom: 10px; color: #ee5a24"
+            ></div>
+            <div id="informationTableContainer" style="overflow-x: auto"></div>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 版本資訊 -->
+    <div
+      style="
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(10, 130, 118, 0.8);
+        color: white;
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 12px;
+        font-weight: 600;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 15px rgba(10, 130, 118, 0.3);
+        z-index: 999;
+      "
+    >
+      v0.4
     </div>
 
     <!-- 通知元件 -->
@@ -1052,15 +1087,16 @@
           allRecords = await response.json();
           displayedRecords = 0;
           isLoading = false;
-          
+
           const resultsDiv = document.getElementById("searchResults");
-          resultsDiv.innerHTML = '';
-          
+          resultsDiv.innerHTML = "";
+
           if (allRecords.length === 0) {
-            resultsDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;"><h3>📋 No records found</h3></div>';
+            resultsDiv.innerHTML =
+              '<div style="text-align: center; padding: 40px; color: #666;"><h3>📋 No records found</h3></div>';
             return;
           }
-          
+
           loadMoreRecords();
         } catch (error) {
           console.error("載入最新記錄失敗:", error);
@@ -1070,62 +1106,81 @@
 
       // 載入更多記錄
       function loadMoreRecords() {
-        console.log('loadMoreRecords 被呼叫:', {
+        console.log("loadMoreRecords 被呼叫:", {
           isLoading,
           displayedRecords,
-          totalRecords: allRecords.length
+          totalRecords: allRecords.length,
         });
-        
+
         if (isLoading || displayedRecords >= allRecords.length) {
-          console.log('跳過載入:', { isLoading, displayedRecords, total: allRecords.length });
+          console.log("跳過載入:", {
+            isLoading,
+            displayedRecords,
+            total: allRecords.length,
+          });
           return;
         }
-        
+
         isLoading = true;
-        const nextRecords = allRecords.slice(displayedRecords, displayedRecords + recordsPerPage);
-        
-        console.log('載入資料:', {
+        const nextRecords = allRecords.slice(
+          displayedRecords,
+          displayedRecords + recordsPerPage
+        );
+
+        console.log("載入資料:", {
           從: displayedRecords,
           到: displayedRecords + recordsPerPage,
-          實際載入: nextRecords.length
+          實際載入: nextRecords.length,
         });
-        
+
         if (nextRecords.length > 0) {
           const resultsDiv = document.getElementById("searchResults");
-          let existingGrid = resultsDiv.querySelector('.record-grid');
-          
+          let existingGrid = resultsDiv.querySelector(".record-grid");
+
           if (!existingGrid) {
-            existingGrid = document.createElement('div');
-            existingGrid.className = 'record-grid';
+            existingGrid = document.createElement("div");
+            existingGrid.className = "record-grid";
             resultsDiv.appendChild(existingGrid);
           }
-          
+
           nextRecords.forEach((record, index) => {
             const efficiencyData = record.efficiency_data || [];
-            const maxEfficiency = efficiencyData.length > 0 
-              ? Math.max(...efficiencyData.map(d => d.efficiency)) 
-              : "N/A";
-            const fullLoadEfficiency = efficiencyData.length > 0 
-              ? efficiencyData[efficiencyData.length - 1]?.efficiency || "N/A" 
-              : "N/A";
-            const firstVin = efficiencyData.length > 0 && efficiencyData[0].vin !== undefined 
-              ? efficiencyData[0].vin 
-              : "N/A";
-            const firstVout = efficiencyData.length > 0 && efficiencyData[0].vout !== undefined 
-              ? efficiencyData[0].vout 
-              : "N/A";
+            const maxEfficiency =
+              efficiencyData.length > 0
+                ? Math.max(...efficiencyData.map((d) => d.efficiency))
+                : "N/A";
+            const fullLoadEfficiency =
+              efficiencyData.length > 0
+                ? efficiencyData[efficiencyData.length - 1]?.efficiency || "N/A"
+                : "N/A";
+            const firstVin =
+              efficiencyData.length > 0 && efficiencyData[0].vin !== undefined
+                ? efficiencyData[0].vin
+                : "N/A";
+            const firstVout =
+              efficiencyData.length > 0 && efficiencyData[0].vout !== undefined
+                ? efficiencyData[0].vout
+                : "N/A";
             const maxCurrent = record.imax || "N/A";
             const tlvrStatus = record.tlvr === "yes" ? "✅ Yes" : "❌ No";
             const remarks = record.notice ? record.notice : "No remarks";
-            const checked = selectedSeriesNumbers.includes(record.series_number) ? "checked" : "";
-            
-            const cardElement = document.createElement('div');
-            cardElement.className = 'record-item';
+            const checked = selectedSeriesNumbers.includes(record.series_number)
+              ? "checked"
+              : "";
+
+            const cardElement = document.createElement("div");
+            cardElement.className = "record-item";
             cardElement.innerHTML = `
               <input type="checkbox" style="margin-right:8px;transform:scale(1.3);vertical-align:middle;" 
-                     onchange="toggleSeriesSelection(${record.series_number}, this.checked)" ${checked} />
-              <div class="record-title">${displayedRecords + index + 1}. ${record.pcb_name} - ${record.powerstage_name}</div>
-              <div style="font-size:12px;color:#666;margin-bottom:8px;">Series Number: ${record.series_number}</div>
+                     onchange="toggleSeriesSelection(${
+                       record.series_number
+                     }, this.checked)" ${checked} />
+              <div class="record-title">${displayedRecords + index + 1}. ${
+              record.pcb_name
+            } - ${record.powerstage_name}</div>
+              <div style="font-size:12px;color:#666;margin-bottom:8px;">Series Number: ${
+                record.series_number
+              }</div>
               <div class="record-details">
                 📊 Phases: ${record.phase_count}<br>
                 🔄 Frequency: ${record.frequency} kHz<br>
@@ -1135,42 +1190,54 @@
                 👤 By: ${record.user_name}<br>
                 📅 ${new Date(record.upload_date).toLocaleDateString()}<br>
                 🔋 Vin: ${firstVin} | ⚡ Vout: ${firstVout}<br>
-                🏆 Max: ${maxEfficiency !== "N/A" ? maxEfficiency.toFixed(2) : "N/A"}%<br>
-                📈 Full Load: ${fullLoadEfficiency !== "N/A" ? fullLoadEfficiency.toFixed(2) : "N/A"}%<br>
+                🏆 Max: ${
+                  maxEfficiency !== "N/A" ? maxEfficiency.toFixed(2) : "N/A"
+                }%<br>
+                📈 Full Load: ${
+                  fullLoadEfficiency !== "N/A"
+                    ? fullLoadEfficiency.toFixed(2)
+                    : "N/A"
+                }%<br>
                 📝 Remarks: ${remarks}
               </div>
-              <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${record.series_number})">
+              <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${
+                record.series_number
+              })">
                 📥 Download Data
               </button>
             `;
             existingGrid.appendChild(cardElement);
           });
-          
+
           displayedRecords += nextRecords.length;
-          
-          console.log('載入完成後狀態:', {
+
+          console.log("載入完成後狀態:", {
             displayedRecords,
             totalRecords: allRecords.length,
-            hasMore: displayedRecords < allRecords.length
+            hasMore: displayedRecords < allRecords.length,
           });
-          
+
           // 如果還有更多資料，顯示載入提示
           if (displayedRecords < allRecords.length) {
             showLoadMoreIndicator();
-            
+
             // 延遲檢查是否需要自動載入更多（用於頁面高度不足的情況）
             setTimeout(() => {
               const { scrollHeight, clientHeight } = document.documentElement;
-              console.log('自動檢查是否需要載入更多:', {
+              console.log("自動檢查是否需要載入更多:", {
                 scrollHeight,
                 clientHeight,
                 needsMore: scrollHeight <= clientHeight + 200,
                 hasMore: displayedRecords < allRecords.length,
-                isLoading
+                isLoading,
               });
-              
-              if (scrollHeight <= clientHeight + 200 && !isLoading && displayedRecords < allRecords.length) {
-                console.log('頁面高度不足，自動載入更多資料');
+
+              if (
+                scrollHeight <= clientHeight + 200 &&
+                !isLoading &&
+                displayedRecords < allRecords.length
+              ) {
+                console.log("頁面高度不足，自動載入更多資料");
                 loadMoreRecords();
               }
             }, 100);
@@ -1178,18 +1245,18 @@
             hideLoadMoreIndicator();
           }
         }
-        
+
         isLoading = false;
       }
 
       // 顯示載入更多提示
       function showLoadMoreIndicator() {
         const resultsDiv = document.getElementById("searchResults");
-        let indicator = resultsDiv.querySelector('.load-more-indicator');
-        
+        let indicator = resultsDiv.querySelector(".load-more-indicator");
+
         if (!indicator) {
-          indicator = document.createElement('div');
-          indicator.className = 'load-more-indicator';
+          indicator = document.createElement("div");
+          indicator.className = "load-more-indicator";
           indicator.innerHTML = `
             <div style="text-align: center; padding: 20px; color: #666; font-style: italic;">
               📥 向下滾動載入更多資料... (${displayedRecords}/${allRecords.length})
@@ -1216,7 +1283,7 @@
       // 隱藏載入更多提示
       function hideLoadMoreIndicator() {
         const resultsDiv = document.getElementById("searchResults");
-        const indicator = resultsDiv.querySelector('.load-more-indicator');
+        const indicator = resultsDiv.querySelector(".load-more-indicator");
         if (indicator) {
           indicator.remove();
         }
@@ -1228,22 +1295,32 @@
         if (!document.getElementById("search").classList.contains("active")) {
           return;
         }
-        
-        const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-        
-        console.log('滾動檢測:', {
+
+        const { scrollTop, scrollHeight, clientHeight } =
+          document.documentElement;
+
+        console.log("滾動檢測:", {
           scrollTop,
           scrollHeight,
           clientHeight,
           差距: scrollHeight - (scrollTop + clientHeight),
           hasMore: displayedRecords < allRecords.length,
-          isLoading
+          isLoading,
         });
-        
+
         // 當滾動到距離底部 300px 時觸發載入，或者如果頁面本身就不夠高
-        if ((scrollTop + clientHeight >= scrollHeight - 300 || scrollHeight <= clientHeight + 100) 
-            && !isLoading && displayedRecords < allRecords.length) {
-          console.log('觸發滾動載入:', displayedRecords, '/', allRecords.length);
+        if (
+          (scrollTop + clientHeight >= scrollHeight - 300 ||
+            scrollHeight <= clientHeight + 100) &&
+          !isLoading &&
+          displayedRecords < allRecords.length
+        ) {
+          console.log(
+            "觸發滾動載入:",
+            displayedRecords,
+            "/",
+            allRecords.length
+          );
           loadMoreRecords();
         }
       }
@@ -1252,32 +1329,36 @@
       async function searchRecords() {
         const vinValue = document.getElementById("searchVin").value;
         const voutValue = document.getElementById("searchVout").value;
-        
+
         // 計算 vin 的 ±10% 範圍
-        let vinMin = '', vinMax = '';
+        let vinMin = "",
+          vinMax = "";
         if (vinValue && !isNaN(vinValue)) {
           const vin = parseFloat(vinValue);
           vinMin = (vin * 0.9).toFixed(2);
           vinMax = (vin * 1.1).toFixed(2);
         }
-        
+
         // 計算 vout 的 ±10% 範圍
-        let voutMin = '', voutMax = '';
+        let voutMin = "",
+          voutMax = "";
         if (voutValue && !isNaN(voutValue)) {
           const vout = parseFloat(voutValue);
           voutMin = (vout * 0.9).toFixed(2);
           voutMax = (vout * 1.1).toFixed(2);
         }
-        
+
         // 計算 max current 的 ±20% 範圍
-        const maxCurrentValue = document.getElementById("searchMaxCurrent").value;
-        let imaxMin = '', imaxMax = '';
+        const maxCurrentValue =
+          document.getElementById("searchMaxCurrent").value;
+        let imaxMin = "",
+          imaxMax = "";
         if (maxCurrentValue && !isNaN(maxCurrentValue)) {
           const maxCurrent = parseFloat(maxCurrentValue);
           imaxMin = (maxCurrent * 0.8).toFixed(2);
           imaxMax = (maxCurrent * 1.2).toFixed(2);
         }
-        
+
         const params = new URLSearchParams({
           powerstage_name: document.getElementById("searchPowerstage").value,
           phase_count: document.getElementById("searchPhase").value,
@@ -1296,22 +1377,23 @@
         try {
           const response = await fetch(`/api/search?${params}`);
           const records = await response.json();
-          
+
           // 重置狀態
           allRecords = records;
           displayedRecords = 0;
           isLoading = false;
-          
+
           // 清空搜尋結果區域
           const resultsDiv = document.getElementById("searchResults");
-          resultsDiv.innerHTML = '';
-          
+          resultsDiv.innerHTML = "";
+
           // 如果沒有結果
           if (records.length === 0) {
-            resultsDiv.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;"><h3>🔍 No matching records found</h3></div>';
+            resultsDiv.innerHTML =
+              '<div style="text-align: center; padding: 40px; color: #666;"><h3>🔍 No matching records found</h3></div>';
             return;
           }
-          
+
           // 載入第一批資料
           loadMoreRecords();
         } catch (error) {
@@ -1341,20 +1423,25 @@
                     : "N/A";
                 const fullLoadEfficiency =
                   efficiencyData.length > 0
-                    ? efficiencyData[efficiencyData.length - 1]?.efficiency || "N/A"
+                    ? efficiencyData[efficiencyData.length - 1]?.efficiency ||
+                      "N/A"
                     : "N/A";
                 const firstVin =
-                  efficiencyData.length > 0 && efficiencyData[0].vin !== undefined
+                  efficiencyData.length > 0 &&
+                  efficiencyData[0].vin !== undefined
                     ? efficiencyData[0].vin
                     : "N/A";
                 const firstVout =
-                  efficiencyData.length > 0 && efficiencyData[0].vout !== undefined
+                  efficiencyData.length > 0 &&
+                  efficiencyData[0].vout !== undefined
                     ? efficiencyData[0].vout
                     : "N/A";
                 const maxCurrent = record.imax || "N/A";
                 const tlvrStatus = record.tlvr === "yes" ? "✅ Yes" : "❌ No";
                 const remarks = record.notice ? record.notice : "No remarks";
-                const checked = selectedSeriesNumbers.includes(record.series_number)
+                const checked = selectedSeriesNumbers.includes(
+                  record.series_number
+                )
                   ? "checked"
                   : "";
                 return `
@@ -1375,7 +1462,9 @@
                             ⚡ Max Current: ${maxCurrent} A<br>
                             � TLVR: ${tlvrStatus}<br>
                             �👤 By: ${record.user_name}<br>
-                            📅 ${new Date(record.upload_date).toLocaleDateString()}<br>
+                            📅 ${new Date(
+                              record.upload_date
+                            ).toLocaleDateString()}<br>
                             🔋 Vin: ${firstVin} | ⚡ Vout: ${firstVout}<br>
                             🏆 Max: ${
                               maxEfficiency !== "N/A"
@@ -1640,19 +1729,19 @@
 
       // 更新多組比較圖表
       function updateMultiChart(records) {
-        const chartContainer = document.querySelector('.chart-container');
-        chartContainer.classList.add('has-chart');
-        
+        const chartContainer = document.querySelector(".chart-container");
+        chartContainer.classList.add("has-chart");
+
         const ctx = document
           .getElementById("multiCompareChart")
           .getContext("2d");
         if (multiChart) {
           multiChart.destroy();
         }
-        
+
         // 檢查是否為手機裝置
         const isMobile = window.innerWidth <= 768;
-        
+
         const colors = [
           "rgb(102, 126, 234)",
           "rgb(245, 87, 108)",
@@ -1757,15 +1846,15 @@
                     enabled: true,
                   },
                   pinch: {
-                    enabled: true
+                    enabled: true,
                   },
-                  mode: 'y',
+                  mode: "y",
                 },
                 pan: {
                   enabled: true,
-                  mode: 'y',
-                }
-              }
+                  mode: "y",
+                },
+              },
             },
             scales: {
               x: {
@@ -1826,8 +1915,8 @@
         if (multiChart) {
           multiChart.destroy();
           multiChart = null;
-          const chartContainer = document.querySelector('.chart-container');
-          chartContainer.classList.remove('has-chart');
+          const chartContainer = document.querySelector(".chart-container");
+          chartContainer.classList.remove("has-chart");
           showNotification("圖表已清除");
         }
       }
@@ -2099,13 +2188,18 @@
 
         try {
           const payload = {};
-          payload[field] = field === "phase_count" || field === "frequency" || field === "inductor_value" || field === "imax" || field === "series_number"
-            ? Number(value)
-            : value;
+          payload[field] =
+            field === "phase_count" ||
+            field === "frequency" ||
+            field === "inductor_value" ||
+            field === "imax" ||
+            field === "series_number"
+              ? Number(value)
+              : value;
           const response = await fetch(`/admin/update-information/${userId}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
           });
           const result = await response.json();
           if (result.success) {
@@ -2134,19 +2228,35 @@
           const res = await fetch("/api/search");
           const records = await res.json();
           if (!records.length) {
-            container.innerHTML = "<div style='padding:20px;'>No records found.</div>";
+            container.innerHTML =
+              "<div style='padding:20px;'>No records found.</div>";
             return;
           }
           // 欄位列表
           const columns = [
-            "user_ID", "user_name", "pcb_name", "powerstage_name", "phase_count",
-            "frequency", "inductor_value", "tlvr", "imax", "upload_date", "notice", "series_number"
+            "user_ID",
+            "user_name",
+            "pcb_name",
+            "powerstage_name",
+            "phase_count",
+            "frequency",
+            "inductor_value",
+            "tlvr",
+            "imax",
+            "upload_date",
+            "notice",
+            "series_number",
           ];
           // 表頭
           let html = `<table style="border-collapse:collapse;width:100%;background:#fff;">
             <thead>
               <tr>
-                ${columns.map(col => `<th style="border:1px solid #ddd;padding:8px;background:#0A8276;color:white;font-weight:600;text-align:center;">${col}</th>`).join("")}
+                ${columns
+                  .map(
+                    (col) =>
+                      `<th style="border:1px solid #ddd;padding:8px;background:#0A8276;color:white;font-weight:600;text-align:center;">${col}</th>`
+                  )
+                  .join("")}
                 <th style="border:1px solid #ddd;padding:8px;background:#0A8276;color:white;font-weight:600;text-align:center;">操作</th>
               </tr>
             </thead>
@@ -2155,13 +2265,15 @@
           // 每一列
           records.forEach((row, idx) => {
             html += `<tr>`;
-            columns.forEach(col => {
+            columns.forEach((col) => {
               // user_ID不可編輯
               if (col === "user_ID") {
                 html += `<td style="border:1px solid #ddd;padding:6px;background:#f8f9fa;color:#333;font-weight:600;text-align:center;">${row[col]}</td>`;
               } else {
                 html += `<td style="border:1px solid #ddd;padding:6px;">
-                  <input type="text" value="${row[col] !== null ? row[col] : ""}" 
+                  <input type="text" value="${
+                    row[col] !== null ? row[col] : ""
+                  }" 
                     style="width:120px;padding:4px;border-radius:4px;border:1px solid #ccc;"
                     id="infoEdit_${row.user_ID}_${col}" />
                 </td>`;
@@ -2174,7 +2286,8 @@
           html += `</tbody></table>`;
           container.innerHTML = html;
         } catch (e) {
-          container.innerHTML = "<div style='padding:20px;color:#ee5a24;'>載入失敗</div>";
+          container.innerHTML =
+            "<div style='padding:20px;color:#ee5a24;'>載入失敗</div>";
         }
       }
 
@@ -2184,14 +2297,31 @@
         statusDiv.textContent = "";
         // 欄位列表
         const columns = [
-          "user_name", "pcb_name", "powerstage_name", "phase_count",
-          "frequency", "inductor_value", "tlvr", "imax", "upload_date", "notice", "series_number"
+          "user_name",
+          "pcb_name",
+          "powerstage_name",
+          "phase_count",
+          "frequency",
+          "inductor_value",
+          "tlvr",
+          "imax",
+          "upload_date",
+          "notice",
+          "series_number",
         ];
         // 收集資料
         const payload = {};
-        columns.forEach(col => {
+        columns.forEach((col) => {
           let val = document.getElementById(`infoEdit_${userId}_${col}`).value;
-          if (["phase_count","frequency","inductor_value","imax","series_number"].includes(col)) {
+          if (
+            [
+              "phase_count",
+              "frequency",
+              "inductor_value",
+              "imax",
+              "series_number",
+            ].includes(col)
+          ) {
             val = val === "" ? null : Number(val);
           }
           payload[col] = val;
@@ -2201,7 +2331,7 @@
           const res = await fetch(`/admin/update-information/${userId}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
           });
           const result = await res.json();
           if (result.success) {
@@ -2251,7 +2381,7 @@
       document.querySelectorAll("#search input").forEach((input) => {
         input.addEventListener("keypress", function (e) {
           if (e.key === "Enter") {
-                       searchRecords();
+            searchRecords();
           }
         });
       });
@@ -2260,15 +2390,17 @@
       document.addEventListener("DOMContentLoaded", function () {
         loadRecordOptions();
         loadPowerstageOptions(); // 載入 Power Stage Name 選項
-        
+
         // 新增滾動事件監聽器
-        window.addEventListener('scroll', handleScroll);
+        window.addEventListener("scroll", handleScroll);
 
         // 檔案選擇處理 - Database Restore
-        document.getElementById('restoreFile').addEventListener('change', function(e) {
-          const fileName = e.target.files[0]?.name || 'No file selected';
-          document.getElementById('restoreFileName').textContent = fileName;
-        });
+        document
+          .getElementById("restoreFile")
+          .addEventListener("change", function (e) {
+            const fileName = e.target.files[0]?.name || "No file selected";
+            document.getElementById("restoreFileName").textContent = fileName;
+          });
 
         // 檢查是否已經是管理者
         fetch("/admin/backup")
@@ -2278,7 +2410,7 @@
               document.getElementById("adminTab").style.display = "block";
               document.getElementById("adminToggle").textContent = "管理者登出";
               document.getElementById("adminToggle").style.background =
-              "linear-gradient(45deg, #0A8276, #065b53)";
+                "linear-gradient(45deg, #0A8276, #065b53)";
             }
           })
           .catch(() => {
@@ -2330,7 +2462,7 @@
           const powerstageNames = await response.json();
 
           const datalist = document.getElementById("powerstageOptions");
-          datalist.innerHTML = '';
+          datalist.innerHTML = "";
 
           powerstageNames.forEach((name) => {
             const option = document.createElement("option");
