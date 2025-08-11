@@ -796,69 +796,6 @@
                 Delete Record
               </button>
             </div>
-
-            <!-- 新增：訂正 information_table 資料 -->
-            <div class="admin-card">
-              <h3>✏️ Edit information_table Record</h3>
-              <p>訂正資料（依 user_ID）</p>
-              <div style="margin-bottom:10px;">
-                <input
-                  type="number"
-                  id="editUserId"
-                  placeholder="user_ID"
-                  style="
-                    width: 100%;
-                    padding: 10px;
-                    border-radius: 8px;
-                    border: 1px solid #ddd;
-                  "
-              />
-              </div>
-              <div style="margin-bottom:10px;">
-                <select
-                  id="editField"
-                  style="
-                    width: 100%;
-                    padding: 10px;
-                    border-radius: 8px;
-                    border: 1px solid #ddd;
-                  "
-                >
-                  <option value="">選擇欄位</option>
-                  <option value="user_name">user_name</option>
-                  <option value="pcb_name">pcb_name</option>
-                  <option value="powerstage_name">powerstage_name</option>
-                  <option value="phase_count">phase_count</option>
-                  <option value="frequency">frequency</option>
-                  <option value="inductor_value">inductor_value</option>
-                  <option value="tlvr">tlvr</option>
-                  <option value="imax">imax</option>
-                  <option value="upload_date">upload_date</option>
-                  <option value="notice">notice</option>
-                  <option value="series_number">series_number</option>
-                </select>
-              </div>
-              <div style="margin-bottom:10px;">
-                <input
-                  type="text"
-                  id="editValue"
-                  placeholder="新值"
-                  style="
-                    width: 100%;
-                    padding: 10px;
-                    border-radius: 8px;
-                    border: 1px solid #ddd;
-                  "
-              />
-              </div>
-              <button
-                class="btn-success"
-                onclick="editInformationRecord()"
-              >
-                訂正資料
-              </button>
-              <div id="editInfoStatus" style="margin-top:10px;font-size:13px;"></div>
-            </div>
           </div>
 
           <!-- 新增：information_table 全表編輯區 -->
