@@ -565,10 +565,10 @@
       </div>
 
       <div class="tabs">
-        <div class="tab active" onclick="switchTab('upload')">
-          📊 Upload Data
+        <div class="tab" onclick="switchTab('upload')">📊 Upload Data</div>
+        <div class="tab active" onclick="switchTab('search')">
+          🔍 Search Analysis
         </div>
-        <div class="tab" onclick="switchTab('search')">🔍 Search Analysis</div>
         <div
           id="adminTab"
           class="tab"
@@ -580,7 +580,7 @@
       </div>
 
       <!-- 上傳數據頁面 -->
-      <div id="upload" class="tab-content active">
+      <div id="upload" class="tab-content">
         <div class="form-container">
           <h2 class="form-title">📤 Upload Efficiency Test Data</h2>
           <form id="uploadForm" enctype="multipart/form-data">
@@ -658,7 +658,7 @@
       </div>
 
       <!-- 搜尋分析頁面 -->
-      <div id="search" class="tab-content">
+      <div id="search" class="tab-content active">
         <div class="search-container">
           <h2 class="form-title">🔍 Multi-condition Search</h2>
           <div class="form-grid">
@@ -2390,7 +2390,7 @@
       document.addEventListener("DOMContentLoaded", function () {
         loadRecordOptions();
         loadPowerstageOptions(); // 載入 Power Stage Name 選項
-
+        
         // 新增滾動事件監聽器
         window.addEventListener("scroll", handleScroll);
 
@@ -2416,9 +2416,12 @@
           .catch(() => {
             // 不是管理者，忽略錯誤
           });
-      });
 
-      // 刪除特定資料
+        // 因為預設頁面是 search，所以自動載入最新資料
+        if (document.getElementById("search").classList.contains("active")) {
+          loadLatestRecords();
+        }
+      });      // 刪除特定資料
       async function deleteRecordBySeriesNumber() {
         const seriesNumber =
           document.getElementById("deleteSeriesNumber").value;
