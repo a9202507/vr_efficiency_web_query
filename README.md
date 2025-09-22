@@ -10,16 +10,22 @@
 * 響應式網頁設計
 
 ### 後端
-* Python 3.9+
-* Flask Framework
-* Flask-SocketIO
-* SQLite
-* Pandas
+* Python 3.12
+* Flask Framework 2.3.7
+* Flask-SocketIO 5.3.6
+* SQLite (內建)
+* Pandas 2.2.2
+* Numpy 1.26.4
 
 ### 部署環境
 * 支援本地部署
 * 支援 Docker 容器化
 * **支援 RedHat OpenShift 部署**（已針對任意用戶 ID 進行優化）
+
+## 已知問題解決
+* **Numpy/Pandas 相容性問題**：已鎖定 numpy==1.26.4 和 pandas==2.2.2 版本
+* **OpenShift 權限問題**：已配置適當的檔案權限和用戶 ID 範圍
+* **套件安裝順序**：先安裝 numpy 再安裝其他依賴套件
 
 ## 資料庫設計 (SQLite)
 
@@ -122,3 +128,18 @@ vr_efficiency_web_query/
 ├── static/           # 靜態資源
 └── data/            # 資料庫檔案目錄
 ```
+
+## 故障排除
+
+### 常見部署問題
+1. **numpy.dtype size changed 錯誤**
+   - 原因：pandas 和 numpy 版本不相容
+   - 解決：使用指定版本的 requirements.txt
+
+2. **權限問題 (OpenShift)**
+   - 原因：容器使用任意用戶 ID
+   - 解決：已在 Dockerfile 中設定正確的群組權限
+
+3. **套件安裝失敗**
+   - 原因：缺少編譯工具
+   - 解決：已在 Dockerfile 中安裝 gcc, g++, build-essential
