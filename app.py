@@ -769,16 +769,10 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV', 'production') == 'development'
     
-    # 檢查是否在生產環境
-    if os.environ.get('FLASK_ENV', 'production') == 'production':
-        # 生產環境使用 eventlet 或允許不安全的 werkzeug
-        try:
-            import eventlet
-            eventlet.monkey_patch()
-            socketio.run(app, debug=False, host='0.0.0.0', port=port)
-        except ImportError:
-            # 如果沒有 eventlet，允許不安全的 werkzeug
-            socketio.run(app, debug=False, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
+    # 檢查是否在 OpenShift 環境中
+    if os.environ.get('OPENSHIFT_BUILD_NAME') or os.environ.get('KUBERNETES_SERVICE_HOST'):
+        # OpenShift/Kubernetes 環境，使用 eventlet 並允許不安全的 werkzeug
+        socketio.run(app, debug=False, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
     else:
-        # 開發環境
+        # 本地開發環境
         socketio.run(app, debug=debug, host='0.0.0.0', port=port)
