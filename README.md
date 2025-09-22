@@ -110,20 +110,72 @@ docker run -p 5000:5000 vr-efficiency-app
 ### OpenShift 部署 (推薦)
 
 ```bash
-# 使用 S2I 從 Git repository 直接部署
-oc new-app python~https://github.com/your-repo/vr_efficiency_web_query.git
+# 方法 1: 使用 S2I 並自動創建路由
+oc new-app python~https://github.com/your-repo/vr_efficiency_web_query.git --name=vr-efficiency-app
+oc expose service/vr-efficiency-app
 
-# 或者使用 oc new-build 然後部署
-oc new-build python~https://github.com/your-repo/vr_efficiency_web_query.git --name=vr-efficiency-app
-oc new-app vr-efficiency-app
+# 方法 2: 一次性部署並創建路由
+oc new-app python~https://github.com/your-repo/vr_efficiency_web_query.git && \
+oc expose service/vr-efficiency-web-query-git
+
+# 方法 3: 使用 YAML 配置檔案部署（包含路由）
+oc apply -f openshift-config.yaml
+
+# 方法 4: 使用 Template 參數化部署（推薦）
+oc process -f openshift-template.yaml \
+  -p APP_NAME=vr-efficiency-app \
+  -p GIT_URI=https://github.com/your-repo/vr_efficiency_web_query.git \
+  -p GIT_REF=main \
+  -p SECRET_KEY=your-custom-secret-key \
+  -p ADMIN_PASSWORD=your-admin-password \
+  | oc apply -f -
+
+# 獲取應用程式 URL
+oc get route
 ```
 
-### OpenShift 環境變數設定
+## 建置階段設定方法
+
+### 1. S2I 環境設定檔案（自動生效）
+
+在專案根目錄創建 `.s2i/environment` 檔案：
+```bash
+SECRET_KEY=vr-efficiency-default-secret-key
+ADMIN_PASSWORD=admin123
+FLASK_ENV=production
+PORT=5000
+```
+
+### 2. OpenShift Template（參數化部署）
+
+使用 Template 進行參數化部署：
+```bash
+# 部署 Template 到 OpenShift
+oc apply -f openshift-template.yaml
+
+# 使用 Template 創建應用程式
+oc new-app --template=vr-efficiency-web-query-template \
+  -p SECRET_KEY=your-secret-key \
+  -p ADMIN_PASSWORD=your-admin-password \
+  -p GIT_REF=main
+```
+
+### 3. 直接使用 YAML 配置
 
 ```bash
-# 設定應用程式環境變數
-oc set env deployment/vr-efficiency-web-query-git SECRET_KEY=your-secret-key
-oc set env deployment/vr-efficiency-web-query-git ADMIN_PASSWORD=your-admin-password
+# 直接部署完整配置
+oc apply -f openshift-config.yaml
+```
+
+### 4. Kustomize 配置（進階）
+
+創建不同環境的配置覆蓋：
+```bash
+# 開發環境
+oc apply -k overlays/development
+
+# 生產環境  
+oc apply -k overlays/production
 ```
 
 ## 上傳資料格式
@@ -140,18 +192,74 @@ oc set env deployment/vr-efficiency-web-query-git ADMIN_PASSWORD=your-admin-pass
 - `PORT`: 應用程式端口 (預設: 5000)
 - `FLASK_ENV`: 開發/生產環境設定
 
+## OpenShift 環境變數設定
+
+```bash
+# 方法 1: 命令行設定環境變數
+oc set env deployment/vr-efficiency-web-query SECRET_KEY=your-secret-key
+oc set env deployment/vr-efficiency-web-query ADMIN_PASSWORD=your-admin-password
+
+# 方法 2: 使用配置檔案部署（環境變數已包含）
+oc apply -f openshift-config.yaml
+
+# 檢查部署狀態
+oc get pods
+oc logs deployment/vr-efficiency-web-query
+```
+
+## 路由創建方式
+
+OpenShift 路由可以通過多種方式創建：
+
+### 1. 命令行創建（手動）
+
+```bash
+# 在應用程式部署後手動創建
+oc expose service/vr-efficiency-web-query
+```
+
+### 2. 部署時自動創建
+
+```bash
+# 部署後立即創建路由
+oc new-app python~https://github.com/your-repo/vr_efficiency_web_query.git && \
+oc expose service/vr-efficiency-web-query-git
+```
+
+### 3. YAML 配置檔案（推薦）
+
+```bash
+# 使用包含路由定義的 YAML 檔案
+oc apply -f openshift-config.yaml
+```
+
+### 4. OpenShift Web Console
+
+- 在 OpenShift Web Console 中
+- 進入 Networking → Routes
+- 點擊 "Create Route"
+- 選擇對應的 Service
+
+### 5. 使用標籤和註釋自動創建
+
+在 Service 中添加特定標籤，某些 OpenShift 配置可以自動創建路由。
+
 ## 檔案結構
 
 ```
 vr_efficiency_web_query/
-├── app.py              # 主應用程式
-├── Dockerfile          # Docker 容器定義
-├── entrypoint.sh       # 容器入口腳本
-├── requirements.txt    # Python 依賴
-├── README.md          # 專案說明
-├── templates/         # HTML 模板
-├── static/           # 靜態資源
-└── data/            # 資料庫檔案目錄
+├── app.py                    # 主應用程式
+├── Dockerfile                # Docker 容器定義
+├── entrypoint.sh            # 容器入口腳本
+├── requirements.txt         # Python 依賴
+├── openshift-config.yaml    # OpenShift 基本部署配置
+├── openshift-template.yaml  # OpenShift Template 參數化部署
+├── README.md               # 專案說明
+├── .s2i/
+│   └── environment         # S2I 建置時環境變數
+├── templates/              # HTML 模板
+├── static/                 # 靜態資源
+└── data/                   # 資料庫檔案目錄
 ```
 
 ## 故障排除
@@ -184,12 +292,42 @@ vr_efficiency_web_query/
    - 解決：應用程式已自動檢測 OpenShift 環境並使用適當設定
 
 3. **建置緩存問題**
+
    - 原因：OpenShift 使用緩存的層
    - 解決：
      ```bash
      # 刪除現有的建置配置和重新創建
      oc delete all -l app=vr-efficiency-web-query-git
      oc new-app python~https://github.com/your-repo/vr_efficiency_web_query.git
+     ```
+
+4. **無法訪問應用程式**
+
+   - 問題：應用程式啟動成功但無法通過 IP 訪問
+   - 原因：容器內部 IP 無法從外部直接訪問
+   - 解決步驟：
+
+     ```bash
+     # 1. 檢查服務狀態
+     oc get svc
+     oc get pods
+
+     # 2. 創建路由（如果不存在）
+     oc expose service/vr-efficiency-web-query-git
+
+     # 3. 獲取外部訪問 URL
+     oc get route vr-efficiency-web-query-git -o jsonpath='{.spec.host}'
+
+     # 4. 檢查路由詳細信息
+     oc describe route vr-efficiency-web-query-git
+     ```
+
+5. **應用程式無回應**
+   - 檢查 Pod 狀態和日誌：
+     ```bash
+     oc get pods -l app=vr-efficiency-web-query-git
+     oc logs -f deployment/vr-efficiency-web-query-git
+     oc describe pod <pod-name>
      ```
 
 ### 部署檢查清單
@@ -201,27 +339,31 @@ vr_efficiency_web_query/
 - [ ] Git repository 已推送最新代碼
 - [ ] 使用正確的 Git branch (main/master/development)
 - [ ] 應用程式能自動檢測 OpenShift 環境
+- [ ] 已創建 OpenShift 路由提供外部訪問
 
-### 驗證步驟
+### 訪問應用程式
 
-```bash
-# 1. 檢查 Git 狀態
-git status
-git log --oneline -5
+部署成功後，通過以下步驟訪問應用程式：
 
-# 2. 檢查檔案內容
-grep -n "pandas" app.py requirements.txt
-grep -n "numpy" app.py requirements.txt
+1. **獲取應用程式 URL**：
 
-# 3. 強制推送（如果需要）
-git push --force-with-lease origin main
-```
+   ```bash
+   oc get route vr-efficiency-web-query-git
+   ```
 
-### OpenShift 特殊配置
+2. **訪問應用程式**：
+   使用上述命令顯示的 HOST 欄位 URL，例如：
 
-- OpenShift 使用 S2I (Source-to-Image) 建置流程
-- 自動處理用戶權限和檔案權限
-- 使用內建的 Python 3.12 基礎映像
-- 支援環境變數注入
-- **避免使用需要編譯的套件**
-- **自動檢測生產環境並調整 SocketIO 設定**
+   ```
+   https://vr-efficiency-web-query-git-your-project.apps.cluster.domain.com
+   ```
+
+3. **檢查應用程式狀態**：
+
+   ```bash
+   # 檢查 Pod 運行狀態
+   oc get pods
+
+   # 查看應用程式日誌
+   oc logs -f deployment/vr-efficiency-web-query-git
+   ```

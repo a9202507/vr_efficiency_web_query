@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: List
+items:
+  # BuildConfig
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: vr-efficiency-web-query
+      labels:
+        app: vr-efficiency-web-query
+    spec:
+      source:
+        type: Git
+        git:
+          uri: https://github.com/your-repo/vr_efficiency_web_query.git
+          ref: main
+      strategy:
+        type: Source
+        sourceStrategy:
+          from:
+            kind: ImageStreamTag
+            namespace: openshift
+            name: python:3.12-ubi8
+      output:
+        to:
+          kind: ImageStreamTag
+          name: vr-efficiency-web-query:latest
+
+  # ImageStream
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: vr-efficiency-web-query
+      labels:
+        app: vr-efficiency-web-query
+
+  # DeploymentConfig
+  - apiVersion: apps.openshift.io/v1
+    kind: DeploymentConfig
+    metadata:
+      name: vr-efficiency-web-query
+      labels:
+        app: vr-efficiency-web-query
+    spec:
+      replicas: 1
+      selector:
+        app: vr-efficiency-web-query
+      template:
+        metadata:
+          labels:
+            app: vr-efficiency-web-query
+        spec:
+          containers:
+            - name: vr-efficiency-web-query
+              image: vr-efficiency-web-query:latest
+              ports:
+                - containerPort: 5000
+                  protocol: TCP
+              env:
+                - name: SECRET_KEY
+                  value: "your-secret-key-here"
+                - name: ADMIN_PASSWORD
+                  value: "your-admin-password-here"
+                - name: FLASK_ENV
+                  value: "production"
+              resources:
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+      triggers:
+        - type: ImageChange
+          imageChangeParams:
+            automatic: true
+            containerNames:
+              - vr-efficiency-web-query
+            from:
+              kind: ImageStreamTag
+              name: vr-efficiency-web-query:latest
+        - type: ConfigChange
+
+  # Service
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: vr-efficiency-web-query
+      labels:
+        app: vr-efficiency-web-query
+    spec:
+      selector:
+        app: vr-efficiency-web-query
+      ports:
+        - name: 5000-tcp
+          port: 5000
+          protocol: TCP
+          targetPort: 5000
+
+  # Route (自動創建外部訪問路由)
+  - apiVersion: route.openshift.io/v1
+    kind: Route
+    metadata:
+      name: vr-efficiency-web-query
+      labels:
+        app: vr-efficiency-web-query
+    spec:
+      to:
+        kind: Service
+        name: vr-efficiency-web-query
+        weight: 100
+      port:
+        targetPort: 5000-tcp
+      tls:
+        termination: edge
+        insecureEdgeTerminationPolicy: Redirect

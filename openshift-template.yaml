@@ -1,0 +1,170 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: vr-efficiency-web-query-template
+  annotations:
+    description: "VR 實測效率查詢系統部署模板"
+    tags: "python,flask,database"
+parameters:
+  - name: APP_NAME
+    displayName: Application Name
+    description: Name of the application
+    value: vr-efficiency-web-query
+    required: true
+  - name: GIT_URI
+    displayName: Git Repository URL
+    description: The URL of the repository with your application source code
+    value: https://github.com/a9202507/vr_efficiency_web_query.git
+    required: true
+  - name: GIT_REF
+    displayName: Git Reference
+    description: Set this to a branch name, tag or other ref of your repository
+    value: development
+    required: true
+  - name: SECRET_KEY
+    displayName: Flask Secret Key
+    description: Secret key for Flask application
+    generate: expression
+    from: '[a-zA-Z0-9]{32}'
+    required: true
+  - name: ADMIN_PASSWORD
+    displayName: Admin Password
+    description: Password for admin access
+    value: admin123
+    required: true
+
+objects:
+  # BuildConfig
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      source:
+        type: Git
+        git:
+          uri: ${GIT_URI}
+          ref: ${GIT_REF}
+      strategy:
+        type: Source
+        sourceStrategy:
+          from:
+            kind: ImageStreamTag
+            namespace: openshift
+            name: python:3.12-ubi8
+          env:
+            - name: BUILD_LOGLEVEL
+              value: "2"
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ${APP_NAME}:latest
+      triggers:
+        - type: ConfigChange
+        - type: GitHub
+          github:
+            secret: ${GITHUB_WEBHOOK_SECRET}
+        - type: ImageChange
+
+  # ImageStream
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+
+  # DeploymentConfig
+  - apiVersion: apps.openshift.io/v1
+    kind: DeploymentConfig
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      replicas: 1
+      selector:
+        app: ${APP_NAME}
+      template:
+        metadata:
+          labels:
+            app: ${APP_NAME}
+        spec:
+          containers:
+            - name: ${APP_NAME}
+              image: ${APP_NAME}:latest
+              ports:
+                - containerPort: 5000
+                  protocol: TCP
+              env:
+                - name: SECRET_KEY
+                  value: ${SECRET_KEY}
+                - name: ADMIN_PASSWORD
+                  value: ${ADMIN_PASSWORD}
+                - name: FLASK_ENV
+                  value: production
+                - name: PORT
+                  value: "5000"
+              resources:
+                limits:
+                  memory: 512Mi
+                  cpu: 500m
+                requests:
+                  memory: 256Mi
+                  cpu: 100m
+              readinessProbe:
+                httpGet:
+                  path: /
+                  port: 5000
+                initialDelaySeconds: 30
+                timeoutSeconds: 3
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: 5000
+                initialDelaySeconds: 30
+                timeoutSeconds: 3
+      triggers:
+        - type: ImageChange
+          imageChangeParams:
+            automatic: true
+            containerNames:
+              - ${APP_NAME}
+            from:
+              kind: ImageStreamTag
+              name: ${APP_NAME}:latest
+        - type: ConfigChange
+
+  # Service
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      selector:
+        app: ${APP_NAME}
+      ports:
+        - name: web
+          port: 5000
+          targetPort: 5000
+
+  # Route
+  - apiVersion: route.openshift.io/v1
+    kind: Route
+    metadata:
+      name: ${APP_NAME}
+      labels:
+        app: ${APP_NAME}
+    spec:
+      to:
+        kind: Service
+        name: ${APP_NAME}
+      port:
+        targetPort: web
+      tls:
+        termination: edge
+        insecureEdgeTerminationPolicy: Redirect

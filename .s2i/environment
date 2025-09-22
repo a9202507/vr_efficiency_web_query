@@ -1,0 +1,5 @@
+# S2I 建置時環境變數設定
+SECRET_KEY=vr-efficiency-default-secret-key
+ADMIN_PASSWORD=admin123
+FLASK_ENV=production
+PORT=5000
