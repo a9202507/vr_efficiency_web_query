@@ -10,12 +10,12 @@
 * 響應式網頁設計
 
 ### 後端
-* Python 3.11+ (OpenShift 基礎映像相容)
+* Python 3.12 (OpenShift 基礎映像)
 * Flask Framework 2.3.3
 * Flask-SocketIO 5.3.6
 * SQLite (內建)
-* Pandas 2.1.1
-* Numpy 1.24.3
+* Pandas 2.0.3
+* Numpy 1.25.2
 
 ### 部署環境
 * 支援本地部署
@@ -23,8 +23,9 @@
 * **支援 RedHat OpenShift 部署**（使用 S2I 建置流程）
 
 ## 已知問題解決
+* **Python 3.12 distutils 問題**：使用預編譯套件版本避免編譯錯誤
 * **Flask 版本問題**：使用 Flask==2.3.3（OpenShift 套件庫支援的版本）
-* **Numpy/Pandas 相容性問題**：使用穩定的版本組合
+* **Numpy/Pandas 相容性問題**：使用經過測試的穩定版本組合
 * **OpenShift S2I 建置**：專為 S2I 流程優化的套件版本
 
 ## 資料庫設計 (SQLite)
@@ -140,19 +141,23 @@ vr_efficiency_web_query/
 ## 故障排除
 
 ### 常見部署問題
-1. **Flask 版本錯誤**
+1. **distutils 模組錯誤 (Python 3.12)**
+   - 原因：Python 3.12 移除了 distutils，某些套件需要編譯
+   - 解決：使用預編譯套件版本，避免 numpy==1.24.3 等需要編譯的版本
+
+2. **Flask 版本錯誤**
    - 原因：指定版本在 OpenShift 套件庫中不存在
    - 解決：使用 Flask==2.3.3 (經過測試的穩定版本)
 
-2. **S2I 建置失敗**
-   - 原因：套件版本與基礎映像不相容
+3. **S2I 建置失敗**
+   - 原因：套件版本與基礎映像不相容或需要編譯
    - 解決：使用經過測試的 requirements.txt 版本組合
 
-3. **numpy.dtype size changed 錯誤**
+4. **numpy.dtype size changed 錯誤**
    - 原因：pandas 和 numpy 版本不相容
-   - 解決：使用 numpy==1.24.3 和 pandas==2.1.1 組合
+   - 解決：使用 numpy==1.25.2 和 pandas==2.0.3 組合
 
-4. **權限問題 (OpenShift)**
+5. **權限問題 (OpenShift)**
    - 原因：容器使用任意用戶 ID
    - 解決：應用程式已針對 OpenShift 任意用戶 ID 進行優化
 
@@ -161,3 +166,10 @@ vr_efficiency_web_query/
 - 自動處理用戶權限和檔案權限
 - 使用內建的 Python 3.12 基礎映像
 - 支援環境變數注入
+- 避免使用需要編譯的套件版本
+
+### 套件版本選擇原則
+1. **優先使用預編譯套件**：避免 Python 3.12 distutils 問題
+2. **版本相容性測試**：確保 numpy/pandas 版本相容
+3. **OpenShift 套件庫支援**：使用 OpenShift 內部套件庫可用的版本
+4. **穩定性優先**：選擇經過長時間測試的穩定版本
