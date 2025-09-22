@@ -10,22 +10,22 @@
 * 響應式網頁設計
 
 ### 後端
-* Python 3.12
-* Flask Framework 2.3.7
+* Python 3.11+ (OpenShift 基礎映像相容)
+* Flask Framework 2.3.3
 * Flask-SocketIO 5.3.6
 * SQLite (內建)
-* Pandas 2.2.2
-* Numpy 1.26.4
+* Pandas 2.1.1
+* Numpy 1.24.3
 
 ### 部署環境
 * 支援本地部署
 * 支援 Docker 容器化
-* **支援 RedHat OpenShift 部署**（已針對任意用戶 ID 進行優化）
+* **支援 RedHat OpenShift 部署**（使用 S2I 建置流程）
 
 ## 已知問題解決
-* **Numpy/Pandas 相容性問題**：已鎖定 numpy==1.26.4 和 pandas==2.2.2 版本
-* **OpenShift 權限問題**：已配置適當的檔案權限和用戶 ID 範圍
-* **套件安裝順序**：先安裝 numpy 再安裝其他依賴套件
+* **Flask 版本問題**：使用 Flask==2.3.3（OpenShift 套件庫支援的版本）
+* **Numpy/Pandas 相容性問題**：使用穩定的版本組合
+* **OpenShift S2I 建置**：專為 S2I 流程優化的套件版本
 
 ## 資料庫設計 (SQLite)
 
@@ -89,19 +89,27 @@ pip install -r requirements.txt
 python app.py
 ```
 
-### Docker 部署
+### Docker 部署 (本地)
 ```bash
 docker build -t vr-efficiency-app .
 docker run -p 5000:5000 vr-efficiency-app
 ```
 
-### OpenShift 部署
+### OpenShift 部署 (推薦)
 ```bash
-# 使用 Dockerfile 建立映像
-oc new-build --dockerfile=- --name=vr-efficiency-app < Dockerfile
+# 使用 S2I 從 Git repository 直接部署
+oc new-app python~https://github.com/your-repo/vr_efficiency_web_query.git
 
-# 或從 Git repository 部署
-oc new-app https://github.com/your-repo/vr_efficiency_web_query
+# 或者使用 oc new-build 然後部署
+oc new-build python~https://github.com/your-repo/vr_efficiency_web_query.git --name=vr-efficiency-app
+oc new-app vr-efficiency-app
+```
+
+### OpenShift 環境變數設定
+```bash
+# 設定應用程式環境變數
+oc set env deployment/vr-efficiency-web-query-git SECRET_KEY=your-secret-key
+oc set env deployment/vr-efficiency-web-query-git ADMIN_PASSWORD=your-admin-password
 ```
 
 ## 上傳資料格式
@@ -132,14 +140,24 @@ vr_efficiency_web_query/
 ## 故障排除
 
 ### 常見部署問題
-1. **numpy.dtype size changed 錯誤**
+1. **Flask 版本錯誤**
+   - 原因：指定版本在 OpenShift 套件庫中不存在
+   - 解決：使用 Flask==2.3.3 (經過測試的穩定版本)
+
+2. **S2I 建置失敗**
+   - 原因：套件版本與基礎映像不相容
+   - 解決：使用經過測試的 requirements.txt 版本組合
+
+3. **numpy.dtype size changed 錯誤**
    - 原因：pandas 和 numpy 版本不相容
-   - 解決：使用指定版本的 requirements.txt
+   - 解決：使用 numpy==1.24.3 和 pandas==2.1.1 組合
 
-2. **權限問題 (OpenShift)**
+4. **權限問題 (OpenShift)**
    - 原因：容器使用任意用戶 ID
-   - 解決：已在 Dockerfile 中設定正確的群組權限
+   - 解決：應用程式已針對 OpenShift 任意用戶 ID 進行優化
 
-3. **套件安裝失敗**
-   - 原因：缺少編譯工具
-   - 解決：已在 Dockerfile 中安裝 gcc, g++, build-essential
+### OpenShift 特殊配置
+- OpenShift 使用 S2I (Source-to-Image) 建置流程
+- 自動處理用戶權限和檔案權限
+- 使用內建的 Python 3.12 基礎映像
+- 支援環境變數注入
