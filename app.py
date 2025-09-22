@@ -12,10 +12,22 @@ import io
 import csv
 
 app = Flask(__name__)
-app.secret_key = 'vr-efficiency-system-secret-key'
+app.secret_key = os.environ.get('SECRET_KEY', 'vr-efficiency-system-secret-key')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-ADMIN_PASSWORD = "admin123"  # 生產環境請更改此密碼
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', "admin123")  # 從環境變數讀取
+
+# 確保資料目錄存在並具有正確權限
+def ensure_data_directory():
+    data_dir = os.path.join(os.getcwd(), 'data')
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir, mode=0o775)
+    return data_dir
+
+# 取得資料庫路徑
+def get_db_path():
+    data_dir = ensure_data_directory()
+    return os.path.join(data_dir, 'vr_efficiency.sqlite')
 
 # 權限裝飾器
 def admin_required(f):
@@ -28,7 +40,8 @@ def admin_required(f):
 
 # 資料庫初始化
 def init_db():
-    conn = sqlite3.connect('data/vr_efficiency.sqlite')
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     # information_table
@@ -76,7 +89,8 @@ def init_db():
 
 # 動態取得資料表結構
 def get_table_columns(table_name):
-    conn = sqlite3.connect('data/vr_efficiency.sqlite')
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
     cursor = conn.execute(f"PRAGMA table_info({table_name})")
     columns = [row[1] for row in cursor.fetchall()]
     conn.close()
@@ -140,7 +154,8 @@ def upload_file():
         if missing_columns:
             return jsonify({'error': f'缺少必要欄位: {", ".join(missing_columns)}'}), 400
 
-        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         # 插入 information_table
@@ -208,7 +223,8 @@ def search_records():
     imax_min = request.args.get('imax_min')
     imax_max = request.args.get('imax_max')
     
-    conn = sqlite3.connect('data/vr_efficiency.sqlite')
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     
     # 如果有 vin/vout 範圍條件，需要 JOIN efficiency_table
@@ -288,7 +304,8 @@ def search_records():
 
 @app.route('/api/efficiency-data/<int:user_id>')
 def get_efficiency_data(user_id):
-    conn = sqlite3.connect('data/vr_efficiency.sqlite')
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
     cursor = conn.execute('''
         SELECT e.*, i.pcb_name, i.powerstage_name, i.phase_count
         FROM efficiency_table e
@@ -323,7 +340,8 @@ def get_efficiency_data(user_id):
 @app.route('/download/csv/<int:series_number>')
 def download_csv(series_number):
     try:
-        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         # 先從 information_table 取得 user_id
         cursor.execute('SELECT user_ID, pcb_name, powerstage_name, phase_count, frequency, inductor_value, imax, upload_date FROM information_table WHERE series_number = ?', (series_number,))
@@ -397,10 +415,14 @@ def backup_database():
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     backup_filename = f'vr_efficiency_backup_{timestamp}.sqlite'
     
-    # 複製資料庫檔案
-    shutil.copy2('data/vr_efficiency.sqlite', f'data/{backup_filename}')
+    data_dir = ensure_data_directory()
+    db_path = get_db_path()
+    backup_path = os.path.join(data_dir, backup_filename)
     
-    return send_file(f'data/{backup_filename}', as_attachment=True, download_name=backup_filename)
+    # 複製資料庫檔案
+    shutil.copy2(db_path, backup_path)
+    
+    return send_file(backup_path, as_attachment=True, download_name=backup_filename)
 
 @app.route('/admin/restore', methods=['POST'])
 @admin_required
@@ -415,10 +437,13 @@ def restore_database():
     try:
         # 備份當前資料庫
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        shutil.copy2('data/vr_efficiency.sqlite', f'data/backup_before_restore_{timestamp}.sqlite')
+        data_dir = ensure_data_directory()
+        db_path = get_db_path()
+        backup_path = os.path.join(data_dir, f'backup_before_restore_{timestamp}.sqlite')
+        shutil.copy2(db_path, backup_path)
         
         # 還原資料庫
-        file.save('data/vr_efficiency.sqlite')
+        file.save(db_path)
         
         return jsonify({'success': True, 'message': '資料庫還原成功'})
     except Exception as e:
@@ -430,7 +455,8 @@ def get_table_structure(table_name):
     if table_name not in ['efficiency_table', 'information_table']:
         return jsonify({'error': '無效的資料表名稱'}), 400
     
-    conn = sqlite3.connect('data/vr_efficiency.sqlite')
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
     cursor = conn.execute(f"PRAGMA table_info({table_name})")
     columns = []
     for row in cursor.fetchall():
@@ -457,7 +483,8 @@ def add_column():
         return jsonify({'error': '無效的資料表名稱'}), 400
     
     try:
-        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute(f'ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}')
         conn.commit()
@@ -477,7 +504,8 @@ def remove_column():
         return jsonify({'error': '無效的資料表名稱'}), 400
     
     try:
-        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         # SQLite 不支援直接刪除欄位，需要重建資料表
@@ -512,7 +540,8 @@ def remove_column():
 @admin_required
 def delete_record_by_series_number(series_number):
     try:
-        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         # 刪除 efficiency_table 中的資料
@@ -538,8 +567,10 @@ def multi_search():
     series_numbers = request.args.get('series_numbers')
     powerstage_name = request.args.get('powerstage_name')
     phase_count = request.args.get('phase_count')
-    conn = sqlite3.connect('data/vr_efficiency.sqlite')
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
     records = []
+    
     if series_numbers:
         sn_list = [int(s) for s in series_numbers.split(',') if s.strip().isdigit()]
         for sn in sn_list:
@@ -620,7 +651,8 @@ def multi_search():
 @app.route('/api/series-numbers', methods=['GET'])
 def get_series_numbers():
     try:
-        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         # 只回傳 information_table 中的 series_number
@@ -635,7 +667,8 @@ def get_series_numbers():
 @app.route('/api/powerstage-options', methods=['GET'])
 def get_powerstage_options():
     try:
-        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         # 取得所有不重複的 powerstage_name
@@ -685,7 +718,8 @@ def update_information(user_id):
     values.append(user_id)
 
     try:
-        conn = sqlite3.connect('data/vr_efficiency.sqlite')
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute(f'''
             UPDATE information_table
@@ -707,10 +741,9 @@ def admin_page():
 
 if __name__ == '__main__':
     # 確保目錄存在
-    if not os.path.exists('data'):
-        os.makedirs('data')
+    ensure_data_directory()
     if not os.path.exists('templates'):
-        os.makedirs('templates')
+        os.makedirs('templates', mode=0o775)
     
     init_db()
     port = int(os.environ.get('PORT', 5000))

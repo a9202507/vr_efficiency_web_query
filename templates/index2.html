@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="{{ language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ translations.title }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        :root {
+            --primary-color: #0A8276;
+            --primary-dark: #065b53;
+            --secondary-color: #007bff;
+            --danger-color: #dc3545;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --light-gray: #f8f9fa;
+            --dark-gray: #6c757d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid var(--primary-color);
+            position: relative;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: clamp(2em, 5vw, 3em);
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(45deg, var(--primary-color), var(--primary-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: var(--dark-gray);
+            font-size: 1.2em;
+            font-weight: 300;
+        }
+
+        .language-selector {
+            position: absolute;
+            top: 0;
+            right: 0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .lang-btn {
+            padding: 8px 16px;
+            border: 2px solid var(--primary-color);
+            background: transparent;
+            color: var(--primary-color);
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .lang-btn.active,
+        .lang-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .admin-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .admin-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .admin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.6);
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            background: var(--light-gray);
+            border-radius: 15px;
+            padding: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 18px;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+            font-size: clamp(14px, 2vw, 16px);
+            white-space: nowrap;
+            min-width: 150px;
+        }
+
+        .tab.active {
+            background: linear-gradient(45deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(10, 130, 118, 0.4);
+        }
+
+        .tab:hover:not(.active) {
+            background: #e9ecef;
+            transform: translateY(-1px);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.6s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-container {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            padding: 40px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            color: white;
+            box-shadow: 0 15px 35px rgba(10, 130, 118, 0.3);
+        }
+
+        .form-title {
+            font-size: clamp(1.5em, 4vw, 2em);
+            margin-bottom: 30px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            background: white;
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border-color: var(--primary-color);
+        }
+
+        .range-input {
+            position: relative;
+        }
+
+        .range-input::after {
+            content: "範例: 11.2~13.2 或 11.2-13.2";
+            position: absolute;
+            top: 100%;
+            left: 0;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 4px;
+        }
+
+        .file-upload {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.15);
+            border: 3px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .file-upload:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.02);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-upload-content {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--secondary-color), #0056b3);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4);
+            display: block;
+            margin: 30px auto 0 auto;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(0, 123, 255, 0.6);
+        }
+
+        .search-container {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            padding: 35px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .results-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            min-height: 400px;
+        }
+
+        .chart-container canvas {
+            min-height: 400px;
+            max-height: 600px;
+            height: 100% !important;
+        }
+
+        .chart-container:not(.has-chart) canvas {
+            display: none;
+        }
+
+        .record-item {
+            background: linear-gradient(90deg, var(--light-gray), #e9ecef);
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            flex: 0 0 calc(33.333% - 15px);
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .record-item:hover {
+            background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+            box-shadow: 0 10px 30px rgba(10, 130, 118, 0.3);
+        }
+
+        .record-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .record-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .record-details {
+            font-size: 14px;
+            opacity: 0.8;
+            line-height: 1.6;
+            flex-grow: 1;
+        }
+
+        .download-btn {
+            background: linear-gradient(45deg, #38f9d7, #43e97b);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            align-self: flex-start;
+        }
+
+        .download-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(56, 249, 215, 0.4);
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .chart-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            font-size: 14px;
+        }
+
+        .chart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 20px 30px;
+            background: linear-gradient(45deg, #43e97b, #38f9d7);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(67, 233, 123, 0.4);
+            z-index: 1001;
+            transform: translateX(400px);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+            max-width: 300px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+
+        .version-info {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(10, 130, 118, 0.8);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(10, 130, 118, 0.3);
+            z-index: 999;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            min-width: 400px;
+            max-width: 80vw;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        .status-message {
+            padding: 15px 25px;
+            border-radius: 12px;
+            margin: 15px 0;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .status-success {
+            background: linear-gradient(45deg, #43e97b, #38f9d7);
+            color: white;
+        }
+
+        .status-error {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .load-more-indicator {
+            text-align: center;
+            padding: 20px;
+            color: var(--dark-gray);
+            font-style: italic;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 1200px) {
+            .record-item {
+                flex: 0 0 calc(50% - 15px);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            .tab {
+                min-width: auto;
+            }
+
+            .record-item {
+                flex: 0 0 100%;
+            }
+
+            .language-selector {
+                position: static;
+                justify-content: center;
+                margin-top: 15px;
+            }
+
+            .admin-panel {
+                top: 10px;
+                right: 10px;
+            }
+
+            .chart-controls {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            .form-container,
+            .search-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-panel">
+        <button id="adminToggle" class="admin-btn" onclick="toggleAdmin()">
+            <span id="adminBtnText">{{ translations.admin_login }}</span>
+        </button>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <div class="language-selector">
+                <button class="lang-btn {% if language == 'zh' %}active{% endif %}" onclick="setLanguage('zh')">中文</button>
+                <button class="lang-btn {% if language == 'en' %}active{% endif %}" onclick="setLanguage('en')">English</button>
+            </div>
+            <h1>{{ translations.title }}</h1>
+            <p>{{ translations.subtitle }}</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab" onclick="switchTab('upload')">
+                📊 {{ translations.upload_data }}
+            </div>
+            <div class="tab active" onclick="switchTab('search')">
+                🔍 {{ translations.search_analysis }}
+            </div>
+            <div id="adminTab" class="tab" onclick="switchTab('admin')" style="display: none">
+                ⚙️ {{ translations.system_management }}
+            </div>
+        </div>
+
+        <!-- 上傳數據頁面 -->
+        <div id="upload" class="tab-content">
+            <div class="form-container">
+                <h2 class="form-title">📤 {{ translations.upload_title }}</h2>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>{{ translations.user_name }} *</label>
+                            <input type="text" name="user_name" required />
+                        </div>
+                        <div class="form-group">
+                            <label>{{ translations.pcb_name }} *</label>
+                            <input type="text" name="pcb_name" required />
+                        </div>
+                        <div class="form-group">
+                            <label>{{ translations.powerstage_name }} *</label>
+                            <input type="text" name="powerstage_name" required list="powerstageOptions" />
+                            <datalist id="powerstageOptions"></datalist>
+                        </div>
+                        <div class="form-group">
+                            <label>{{ translations.phase_count }} *</label>
+                            <input type="number" name="phase_count" required min="1" />
+                        </div>
+                        <div class="form-group">
+                            <label>{{ translations.frequency }} *</label>
+                            <input type="number" name="frequency" required min="1" />
+                        </div>
+                        <div class="form-group">
+                            <label>{{ translations.inductor_value }} *</label>
+                            <input type="number" name="inductor_value" required min="1" />
+                        </div>
+                        <div class="form-group">
+                            <label>TLVR</label>
+                            <select name="tlvr">
+                                <option value="yes">Yes</option>
+                                <option value="no">No</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>{{ translations.max_current }} *</label>
+                            <input type="number" name="imax" required min="1" />
+                        </div>
+                        <div class="form-group">
+                            <label>{{ translations.remarks }}</label>
+                            <textarea name="notice" rows="3" placeholder="Test condition remarks..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="file-upload">
+                        <input type="file" id="csvFile" name="file" accept=".csv,.xlsx,.xls" required />
+                        <label for="csvFile" class="file-upload-content">
+                            📁 Click to select CSV or Excel file<br />
+                            <small>Supported formats: CSV (.csv) or Excel (.xlsx, .xls)<br />
+                            Required fields: Istep, Vin, Iin, Vout, remote Vout sense, Iout, Efficiency, Efficiency_remote</small>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-primary">
+                        🚀 {{ translations.upload_file }}
+                    </button>
+                </form>
+
+                <div id="uploadStatus"></div>
+            </div>
+        </div>
+
+        <!-- 搜尋分析頁面 -->
+        <div id="search" class="tab-content active">
+            <div class="search-container">
+                <h2 class="form-title">🔍 {{ translations.search_title }}</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>{{ translations.powerstage_name }}</label>
+                        <input type="text" id="searchPowerstage" placeholder="e.g., TDA22594A" list="powerstageSearchOptions" autocomplete="off" />
+                        <datalist id="powerstageSearchOptions"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ translations.phase_count }}</label>
+                        <input type="number" id="searchPhase" placeholder="e.g., 6" />
+                    </div>
+                    <div class="form-group">
+                        <label>{{ translations.frequency }}</label>
+                        <input type="number" id="searchFrequency" />
+                    </div>
+                    <div class="form-group">
+                        <label>{{ translations.inductor_value }}</label>
+                        <input type="number" id="searchInductor" />
+                    </div>
+                    <div class="form-group">
+                        <label>{{ translations.pcb_name }}</label>
+                        <input type="text" id="searchPcb" />
+                    </div>
+                    <div class="form-group range-input">
+                        <label>Vin Range (V)</label>
+                        <input type="text" id="searchVinRange" placeholder="e.g., 11.2~13.2" />
+                    </div>
+                    <div class="form-group range-input">
+                        <label>Vout Range (V)</label>
+                        <input type="text" id="searchVoutRange" placeholder="e.g., 1.6~2.0" />
+                    </div>
+                    <div class="form-group">
+                        <label>TLVR</label>
+                        <select id="searchTlvr">
+                            <option value="">All</option>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group range-input">
+                        <label>Max Current Range (A)</label>
+                        <input type="text" id="searchMaxCurrentRange" placeholder="e.g., 70~90" />
+                    </div>
+                    <div class="form-group">
+                        <button class="btn-primary" onclick="searchRecords()">
+                            🔍 {{ translations.search_records }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>📊 Multi-group Efficiency Comparison</h3>
+                <div class="chart-controls">
+                    <button class="chart-btn" onclick="showMultiChart()">Show Comparison Chart</button>
+                    <button class="chart-btn" onclick="clearChart()">Clear Chart</button>
+                    <button class="chart-btn" onclick="resetZoom()">Reset Zoom</button>
+                </div>
+                <canvas id="multiCompareChart" width="400" height="200"></canvas>
+            </div>
+
+            <div class="results-container">
+                <h3>📋 Search Results</h3>
+                <div id="searchResults"></div>
+            </div>
+        </div>
+
+        <!-- 管理者頁面 -->
+        <div id="admin" class="tab-content">
+            <div class="form-container">
+                <h2 class="form-title">⚙️ {{ translations.system_management }}</h2>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <h3>💾 {{ translations.backup_database }}</h3>
+                        <p>Download a complete database backup file</p>
+                        <button class="btn-primary" onclick="backupDatabase()">Download Backup</button>
+                    </div>
+
+                    <div class="form-group">
+                        <h3>📥 {{ translations.restore_database }}</h3>
+                        <p>Upload a backup file to restore the database</p>
+                        <div style="margin: 10px 0">
+                            <label for="restoreFile" class="btn-primary" style="display: inline-block; cursor: pointer; margin: 0;">
+                                📁 Choose File
+                            </label>
+                            <input type="file" id="restoreFile" accept=".sqlite" style="display: none;" />
+                            <span id="restoreFileName" style="margin-left: 10px; font-size: 14px; color: #666;">No file selected</span>
+                        </div>
+                        <button class="btn-primary" onclick="restoreDatabase()">Restore Database</button>
+                    </div>
+
+                    <div class="form-group">
+                        <h3>🗑️ {{ translations.delete_record }}</h3>
+                        <p>Select the Series Number of the record to delete</p>
+                        <select id="deleteSeriesNumber" style="margin: 15px 0; padding: 12px; border-radius: 8px; width: 100%;">
+                            <option value="">Select Series Number...</option>
+                        </select>
+                        <button class="chart-btn" onclick="deleteRecordBySeriesNumber()" style="background: linear-gradient(45deg, var(--danger-color), #c82333);">
+                            🗑️ Delete Record
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 版本資訊 -->
+    <div class="version-info">
+        {{ translations.version }} v2.0
+    </div>
+
+    <!-- 通知元件 -->
+    <div id="notification" class="notification"></div>
+
+    <!-- 管理者登入模態框 -->
+    <div id="adminLoginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">🔐 {{ translations.admin_login }}</div>
+            <div class="form-group">
+                <label>Admin Password</label>
+                <input type="password" id="adminPassword" style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd;" />
+            </div>
+            <div style="text-align: center; margin-top: 20px">
+                <button class="btn-primary" onclick="adminLogin()">Login</button>
+                <button class="chart-btn" onclick="closeModal('adminLoginModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全域變數
+        const socket = io();
+        let currentChart = null;
+        let multiChart = null;
+        let selectedSeriesNumbers = [];
+        let allRecords = [];
+        let displayedRecords = 0;
+        const recordsPerPage = 6;
+        let isLoading = false;
+        let currentLanguage = '{{ language }}';
+
+        // 翻譯物件
+        const translations = {{ translations | tojson }};
+
+        // Socket.IO 事件
+        socket.on('connect', function() {
+            console.log('Connected to server');
+        });
+
+        socket.on('new_data_uploaded', function(data) {
+            showNotification(`New data uploaded: ${data.pcb_name} (${data.powerstage_name}) by ${data.user_name}`);
+            loadPowerstageOptions();
+        });
+
+        // 語言切換
+        function setLanguage(lang) {
+            fetch(`/set-language/${lang}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Language change failed:', error);
+                });
+        }
+
+        // 頁籤切換
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabName === 'search') {
+                loadLatestRecords();
+            } else if (tabName === 'admin') {
+                loadSeriesNumbers();
+            }
+        }
+
+        // 顯示通知
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        // 上傳表單處理
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const statusDiv = document.getElementById('uploadStatus');
+
+            statusDiv.innerHTML = '<div class="status-message">⏳ Uploading...</div>';
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    statusDiv.innerHTML = '<div class="status-message status-success">✅ Upload successful!</div>';
+                    showNotification(translations.upload_success);
+                    this.reset();
+                    document.querySelector('.file-upload-content').innerHTML = `
+                        📁 Click to select CSV or Excel file<br />
+                        <small>Supported formats: CSV (.csv) or Excel (.xlsx, .xls)<br />
+                        Required fields: Istep, Vin, Iin, Vout, remote Vout sense, Iout, Efficiency, Efficiency_remote</small>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `<div class="status-message status-error">❌ ${translations.upload_failed}: ${result.error}</div>`;
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status-message status-error">❌ ${translations.upload_failed}: ${error.message}</div>`;
+                showNotification('Upload failed: Network error', 'error');
+            }
+        });
+
+        // 檔案選擇處理
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || 'No file selected';
+            const label = document.querySelector('.file-upload-content');
+            label.innerHTML = `📁 ${fileName}<br><small>File selected</small>`;
+        });
+
+        // 載入最新記錄
+        async function loadLatestRecords() {
+            try {
+                const response = await fetch('/api/search');
+                allRecords = await response.json();
+                displayedRecords = 0;
+                isLoading = false;
+                
+                const resultsDiv = document.getElementById('searchResults');
+                resultsDiv.innerHTML = '';
+                
+                if (allRecords.length === 0) {
+                    resultsDiv.innerHTML = `<div style="text-align: center; padding: 40px; color: #666;"><h3>📋 ${translations.no_records}</h3></div>`;
+                    return;
+                }
+                
+                loadMoreRecords();
+            } catch (error) {
+                console.error('Failed to load records:', error);
+                showNotification('Failed to load data', 'error');
+            }
+        }
+
+        // 載入更多記錄
+        function loadMoreRecords() {
+            if (isLoading || displayedRecords >= allRecords.length) {
+                return;
+            }
+            
+            isLoading = true;
+            const nextRecords = allRecords.slice(displayedRecords, displayedRecords + recordsPerPage);
+            
+            if (nextRecords.length > 0) {
+                const resultsDiv = document.getElementById('searchResults');
+                let existingGrid = resultsDiv.querySelector('.record-grid');
+                
+                if (!existingGrid) {
+                    existingGrid = document.createElement('div');
+                    existingGrid.className = 'record-grid';
+                    resultsDiv.appendChild(existingGrid);
+                }
+                
+                nextRecords.forEach((record, index) => {
+                    const efficiencyData = record.efficiency_data || [];
+                    const maxEfficiency = efficiencyData.length > 0 
+                        ? Math.max(...efficiencyData.map(d => d.efficiency)) 
+                        : "N/A";
+                    const fullLoadEfficiency = efficiencyData.length > 0 
+                        ? efficiencyData[efficiencyData.length - 1]?.efficiency || "N/A" 
+                        : "N/A";
+                    const firstVin = efficiencyData.length > 0 && efficiencyData[0].vin !== undefined 
+                        ? efficiencyData[0].vin 
+                        : "N/A";
+                    const firstVout = efficiencyData.length > 0 && efficiencyData[0].vout !== undefined 
+                        ? efficiencyData[0].vout 
+                        : "N/A";
+                    const maxCurrent = record.imax || "N/A";
+                    const tlvrStatus = record.tlvr === "yes" ? "✅ Yes" : "❌ No";
+                    const remarks = record.notice ? record.notice : "No remarks";
+                    const checked = selectedSeriesNumbers.includes(record.series_number) ? "checked" : "";
+                    
+                    const cardElement = document.createElement('div');
+                    cardElement.className = 'record-item';
+                    cardElement.innerHTML = `
+                        <input type="checkbox" style="margin-right:8px;transform:scale(1.3);vertical-align:middle;" 
+                               onchange="toggleSeriesSelection(${record.series_number}, this.checked)" ${checked} />
+                        <div class="record-title">${displayedRecords + index + 1}. ${record.pcb_name} - ${record.powerstage_name}</div>
+                        <div style="font-size:12px;color:#666;margin-bottom:8px;">Series Number: ${record.series_number}</div>
+                        <div class="record-details">
+                            📊 Phases: ${record.phase_count}<br>
+                            🔄 Frequency: ${record.frequency} kHz<br>
+                            🔌 Inductor: ${record.inductor_value} nH<br>
+                            ⚡ Max Current: ${maxCurrent} A<br>
+                            🔧 TLVR: ${tlvrStatus}<br>
+                            👤 By: ${record.user_name}<br>
+                            📅 ${new Date(record.upload_date).toLocaleDateString()}<br>
+                            🔋 Vin: ${firstVin} | ⚡ Vout: ${firstVout}<br>
+                            🏆 Max: ${maxEfficiency !== "N/A" ? maxEfficiency.toFixed(2) : "N/A"}%<br>
+                            📈 Full Load: ${fullLoadEfficiency !== "N/A" ? fullLoadEfficiency.toFixed(2) : "N/A"}%<br>
+                            📝 Remarks: ${remarks}
+                        </div>
+                        <button class="download-btn" onclick="event.stopPropagation(); downloadCsv(${record.series_number})">
+                            📥 ${translations.download_data}
+                        </button>
+                    `;
+                    existingGrid.appendChild(cardElement);
+                });
+                
+                displayedRecords += nextRecords.length;
+                
+                if (displayedRecords < allRecords.length) {
+                    showLoadMoreIndicator();
+                } else {
+                    hideLoadMoreIndicator();
+                }
+            }
+            
+            isLoading = false;
+        }
+
+        // 顯示載入更多提示
+        function showLoadMoreIndicator() {
+            const resultsDiv = document.getElementById('searchResults');
+            let indicator = resultsDiv.querySelector('.load-more-indicator');
+            
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.className = 'load-more-indicator';
+                indicator.innerHTML = `
+                    <div>
+                        📥 Scroll down to load more data... (${displayedRecords}/${allRecords.length})
+                        <br><br>
+                        <button class="chart-btn" onclick="loadMoreRecords()" style="margin-top: 10px;">
+                            Load More
+                        </button>
+                    </div>
+                `;
+                resultsDiv.appendChild(indicator);
+            } else {
+                indicator.innerHTML = `
+                    <div>
+                        📥 Scroll down to load more data... (${displayedRecords}/${allRecords.length})
+                        <br><br>
+                        <button class="chart-btn" onclick="loadMoreRecords()" style="margin-top: 10px;">
+                            Load More
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // 隱藏載入更多提示
+        function hideLoadMoreIndicator() {
+            const resultsDiv = document.getElementById('searchResults');
+            const indicator = resultsDiv.querySelector('.load-more-indicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        // 搜尋記錄
+        async function searchRecords() {
+            const params = new URLSearchParams({
+                powerstage_name: document.getElementById('searchPowerstage').value,
+                phase_count: document.getElementById('searchPhase').value,
+                frequency: document.getElementById('searchFrequency').value,
+                inductor_value: document.getElementById('searchInductor').value,
+                pcb_name: document.getElementById('searchPcb').value,
+                vin_range: document.getElementById('searchVinRange').value,
+                vout_range: document.getElementById('searchVoutRange').value,
+                tlvr: document.getElementById('searchTlvr').value,
+                max_current_range: document.getElementById('searchMaxCurrentRange').value,
+            });
+
+            try {
+                const response = await fetch(`/api/search?${params}`);
+                const records = await response.json();
+                
+                allRecords = records;
+                displayedRecords = 0;
+                isLoading = false;
+                
+                const resultsDiv = document.getElementById('searchResults');
+                resultsDiv.innerHTML = '';
+                
+                if (records.length === 0) {
+                    resultsDiv.innerHTML = `<div style="text-align: center; padding: 40px; color: #666;"><h3>🔍 ${translations.no_records}</h3></div>`;
+                    return;
+                }
+                
+                loadMoreRecords();
+            } catch (error) {
+                console.error('Search failed:', error);
+                showNotification('Search failed', 'error');
+            }
+        }
+
+        function toggleSeriesSelection(seriesNumber, checked) {
+            if (checked) {
+                if (!selectedSeriesNumbers.includes(seriesNumber))
+                    selectedSeriesNumbers.push(seriesNumber);
+            } else {
+                selectedSeriesNumbers = selectedSeriesNumbers.filter(num => num !== seriesNumber);
+            }
+        }
+
+        // 下載 CSV
+        async function downloadCsv(seriesNumber) {
+            try {
+                const response = await fetch(`/download/csv/${seriesNumber}`);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = response.headers.get('Content-Disposition').split('filename=')[1];
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showNotification('File downloaded successfully');
+                } else {
+                    showNotification('Download failed', 'error');
+                }
+            } catch (error) {
+                console.error('Download failed:', error);
+                showNotification('Download failed', 'error');
+            }
+        }
+
+        // 多組比較圖表
+        async function showMultiChart() {
+            if (selectedSeriesNumbers.length === 0) {
+                showNotification('Please select at least one record for comparison', 'error');
+                return;
+            }
+            
+            try {
+                const params = new URLSearchParams({
+                    series_numbers: selectedSeriesNumbers.join(',')
+                });
+                const response = await fetch(`/api/multi-search?${params}`);
+                const records = await response.json();
+                
+                if (records.length === 0) {
+                    showNotification('No matching records found', 'error');
+                    return;
+                }
+                
+                updateMultiChart(records);
+                showNotification(`Loaded ${records.length} records for comparison`);
+            } catch (error) {
+                console.error('Failed to load comparison chart:', error);
+                showNotification('Failed to load comparison chart', 'error');
+            }
+        }
+
+        // 更新多組比較圖表
+        function updateMultiChart(records) {
+            const chartContainer = document.querySelector('.chart-container');
+            chartContainer.classList.add('has-chart');
+            
+            const ctx = document.getElementById('multiCompareChart').getContext('2d');
+            if (multiChart) {
+                multiChart.destroy();
+            }
+            
+            const colors = [
+                'rgb(102, 126, 234)',
+                'rgb(245, 87, 108)',
+                'rgb(67, 233, 123)',
+                'rgb(56, 249, 215)',
+                'rgb(255, 107, 107)',
+                'rgb(238, 90, 36)',
+                'rgb(155, 89, 182)',
+                'rgb(52, 152, 219)',
+                'rgb(46, 204, 113)',
+            ];
+            
+            const datasets = records.map((record, index) => {
+                const filename = `${record.pcb_name}_${record.powerstage_name}_${record.phase_count}ph_${record.frequency}khz`;
+                return {
+                    label: filename,
+                    data: record.efficiency_data.map(d => ({
+                        x: d.iout,
+                        y: d.efficiency
+                    })),
+                    borderColor: colors[index % colors.length],
+                    backgroundColor: colors[index % colors.length] + '20',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 8,
+                };
+            });
+            
+            multiChart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Multi-group Efficiency Comparison',
+                            font: {
+                                size: 20,
+                                weight: 'bold'
+                            },
+                            padding: 20
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 12
+                                },
+                                padding: 20
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Output Current (A)',
+                                font: {
+                                    size: 16,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Efficiency (%)',
+                                font: {
+                                    size: 16,
+                                    weight: 'bold'
+                                }
+                            },
+                            min: 0,
+                            max: 100
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeInOutQuart'
+                    }
+                }
+            });
+        }
+
+        // 清除圖表
+        function clearChart() {
+            if (multiChart) {
+                multiChart.destroy();
+                multiChart = null;
+                const chartContainer = document.querySelector('.chart-container');
+                chartContainer.classList.remove('has-chart');
+                showNotification('Chart cleared');
+            }
+        }
+
+        // 重置縮放
+        function resetZoom() {
+            if (multiChart) {
+                multiChart.resetZoom();
+                showNotification('Chart zoom reset');
+            }
+        }
+
+        // 載入 Power Stage 選項
+        async function loadPowerstageOptions() {
+            try {
+                const response = await fetch('/api/powerstage-options');
+                const options = await response.json();
+                
+                const uploadDatalist = document.getElementById('powerstageOptions');
+                const searchDatalist = document.getElementById('powerstageSearchOptions');
+                
+                uploadDatalist.innerHTML = '';
+                searchDatalist.innerHTML = '';
+                
+                options.forEach(option => {
+                    const uploadOption = document.createElement('option');
+                    uploadOption.value = option;
+                    uploadDatalist.appendChild(uploadOption);
+                    
+                    const searchOption = document.createElement('option');
+                    searchOption.value = option;
+                    searchDatalist.appendChild(searchOption);
+                });
+            } catch (error) {
+                console.error('Failed to load powerstage options:', error);
+            }
+        }
+
+        // 載入 Series Numbers
+        async function loadSeriesNumbers() {
+            try {
+                const response = await fetch('/api/series-numbers');
+                const numbers = await response.json();
+                
+                const select = document.getElementById('deleteSeriesNumber');
+                select.innerHTML = '<option value="">Select Series Number...</option>';
+                
+                numbers.forEach(number => {
+                    const option = document.createElement('option');
+                    option.value = number;
+                    option.textContent = number;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load series numbers:', error);
+            }
+        }
+
+        // 管理者功能
+        function toggleAdmin() {
+            const isAdmin = document.getElementById('adminTab').style.display !== 'none';
+            
+            if (isAdmin) {
+                adminLogout();
+            } else {
+                document.getElementById('adminLoginModal').style.display = 'block';
+            }
+        }
+
+        async function adminLogin() {
+            const password = document.getElementById('adminPassword').value;
+            
+            try {
+                const response = await fetch('/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('adminTab').style.display = 'block';
+                    document.getElementById('adminBtnText').textContent = translations.admin_logout;
+                    document.getElementById('adminToggle').style.background = 'linear-gradient(45deg, var(--primary-color), var(--primary-dark))';
+                    closeModal('adminLoginModal');
+                    showNotification('Admin login successful');
+                } else {
+                    showNotification('Invalid password', 'error');
+                }
+            } catch (error) {
+                showNotification('Login failed', 'error');
+            }
+        }
+
+        async function adminLogout() {
+            try {
+                await fetch('/admin/logout', { method: 'POST' });
+                document.getElementById('adminTab').style.display = 'none';
+                document.getElementById('adminBtnText').textContent = translations.admin_login;
+                document.getElementById('adminToggle').style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a24)';
+                showNotification('Admin logout successful');
+                
+                if (document.getElementById('admin').classList.contains('active')) {
+                    switchTab('search');
+                }
+            } catch (error) {
+                console.error('Logout failed:', error);
+            }
+        }
+
+        // 備份資料庫
+        async function backupDatabase() {
+            try {
+                const response = await fetch('/admin/backup');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = response.headers.get('Content-Disposition').split('filename=')[1];
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showNotification('Database backup downloaded successfully');
+                } else {
+                    showNotification('Backup failed', 'error');
+                }
+            } catch (error) {
+                console.error('Backup failed:', error);
+                showNotification('Backup failed', 'error');
+            }
+        }
+
+        // 還原資料庫
+        async function restoreDatabase() {
+            const fileInput = document.getElementById('restoreFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showNotification('Please select backup file', 'error');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to restore the database? This will overwrite existing data!')) {
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/admin/restore', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('Database restored successfully');
+                    fileInput.value = '';
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Restore failed:', error);
+                showNotification('Restore failed', 'error');
+            }
+        }
+
+        // 刪除記錄
+        async function deleteRecordBySeriesNumber() {
+            const seriesNumber = document.getElementById('deleteSeriesNumber').value;
+            
+            if (!seriesNumber) {
+                showNotification('Please select Series Number', 'error');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete record with Series Number ${seriesNumber}? This action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/admin/delete-record/${seriesNumber}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('Record deleted successfully');
+                    loadSeriesNumbers();
+                } else {
+                    showNotification(`Delete failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showNotification('Delete operation failed', 'error');
+            }
+        }
+
+        // 模態框控制
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            if (modalId === 'adminLoginModal') {
+                document.getElementById('adminPassword').value = '';
+            }
+        }
+
+        // 點擊模態框外部關閉
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        };
+
+        // 滾動事件監聽
+        function handleScroll() {
+            if (!document.getElementById('search').classList.contains('active')) {
+                return;
+            }
+            
+            const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+            
+            if ((scrollTop + clientHeight >= scrollHeight - 300 || scrollHeight <= clientHeight + 100) 
+                && !isLoading && displayedRecords < allRecords.length) {
+                loadMoreRecords();
+            }
+        }
+
+        // Enter 鍵支援
+        document.getElementById('adminPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                adminLogin();
+            }
+        });
+
+        // 搜尋輸入框 Enter 鍵支援
+        document.querySelectorAll('#search input').forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchRecords();
+                }
+            });
+        });
+
+        // 檔案選擇處理 - Database Restore
+        document.getElementById('restoreFile').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || 'No file selected';
+            document.getElementById('restoreFileName').textContent = fileName;
+        });
+
+        // 頁面載入完成初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPowerstageOptions();
+            
+            // 新增滾動事件監聽器
+            window.addEventListener('scroll', handleScroll);
+            
+            // 檢查是否已經是管理者
+            fetch('/admin/backup')
+                .then(response => {
+                    if (response.ok || response.status === 200) {
+                        document.getElementById('adminTab').style.display = 'block';
+                        document.getElementById('adminBtnText').textContent = translations.admin_logout;
+                        document.getElementById('adminToggle').style.background = 'linear-gradient(45deg, var(--primary-color), var(--primary-dark))';
+                    }
+                })
+                .catch(() => {
+                    // 不是管理者，忽略錯誤
+                });
+            
+            // 因為預設頁面是 search，所以自動載入最新資料
+            if (document.getElementById('search').classList.contains('active')) {
+                loadLatestRecords();
+            }
+        });
+    </script>
+</body>
+</html>

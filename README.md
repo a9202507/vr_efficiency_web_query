@@ -1,44 +1,124 @@
-1. 系統名稱與簡述
 # VR實測效率查詢系統
-## 收集各式條件的實測效率，一般用戶可以透過前端上傳資料至後台資料庫，也可以透過條件找出特定資料，並且下載原始資料。管理者可以下載資料庫備份。
 
-2. 系統需求：
-    * 前端:
-        * javascript
-        * chart.js
-    * 後端:
-        * python
-        * flask framework
-        * SQLite
-3. 資料庫設計 SQLite
-    * 資料表:efficiency table
-        |column_name| series number*|istep | vin | iin| vout | remote vout sense | iout | efficiency | efficiency_remote | user_id|
-        |-|-|-|-|-|-|-|-|-|-|-|
-        |data type|int|float|float|float|float|float|float|float|float|int|
-    * 資料表:information table
-        |column_name| user_ID*|user_name | pcb_name | powerstage_name| phase_count | frequency |inductor_value|tlvr| imax | upload_date | notice | 
-        |-|-|-|-|-|-|-|-|-|-|-|-|
-        |data type|int|str|str|str|int|int|int|int|int|TEXT|str|
+## 系統簡述
+收集各式條件的實測效率，一般用戶可以透過前端上傳資料至後台資料庫，也可以透過條件找出特定資料，並且下載原始資料。管理者可以下載資料庫備份。
 
-4. 功能需求
-    * 介面語言可以切換正體中文或是英文
-    * 一般用戶:
-        * 可透過前端介面上傳.csv到efficiency_table，在上傳的同時，需同步建立infomration_table
-        * 可以多條件搜尋出各別efficiency_table的資料，例如找出所有powerstage_name= TDA22594A 以及6phase的efficinecy_table，並且同步畫面效率曲線在前端介面上。
-        * 可下載指定的原始csv數據
-    * 管理者:
-        * 透過輸入密碼，取得管理者權限。
-        * 管理者可以備份資料庫，備份時自動加上時間記號。
-        * 管理者可以上傳資料庫的備份檔案，達到資料庫的還原功能
-        * 管理者可以在前端介面增減efficiency_table的欄位
-        * 管理者可以在前端介面增減information_table的欄位
-5. 效能需求:
-    * 可同時支援10用戶同時在線上
-    * 上傳資料以.csv為主
-6. 可用性需求：
-    * 響應式網頁計設
-    * 錯誤訊息友善提示
-7. 上傳資料格式說明
-        必要欄位：Istep, Vin, Iin, Vout, remote Vout sense, Iout, Efficiency, Efficiency_remote
-        檔案編碼：UTF-8
-        分隔符號：逗號
+## 系統需求
+### 前端
+* JavaScript
+* Chart.js
+* 響應式網頁設計
+
+### 後端
+* Python 3.9+
+* Flask Framework
+* Flask-SocketIO
+* SQLite
+* Pandas
+
+### 部署環境
+* 支援本地部署
+* 支援 Docker 容器化
+* **支援 RedHat OpenShift 部署**（已針對任意用戶 ID 進行優化）
+
+## 資料庫設計 (SQLite)
+
+### efficiency_table
+| Column Name | Data Type | Description |
+|-------------|-----------|-------------|
+| series_number* | INTEGER | 主鍵，自動遞增 |
+| istep | REAL | 電流步階 |
+| vin | REAL | 輸入電壓 |
+| iin | REAL | 輸入電流 |
+| vout | REAL | 輸出電壓 |
+| remote_vout_sense | REAL | 遠端輸出電壓感測 |
+| iout | REAL | 輸出電流 |
+| efficiency | REAL | 效率 |
+| efficiency_remote | REAL | 遠端效率 |
+| user_id | INTEGER | 外鍵，關聯到 information_table |
+
+### information_table
+| Column Name | Data Type | Description |
+|-------------|-----------|-------------|
+| user_ID* | INTEGER | 主鍵，自動遞增 |
+| user_name | TEXT | 使用者名稱 |
+| pcb_name | TEXT | PCB 名稱 |
+| powerstage_name | TEXT | 功率級名稱 |
+| phase_count | INTEGER | 相數 |
+| frequency | INTEGER | 頻率 (kHz) |
+| inductor_value | INTEGER | 電感值 (nH) |
+| tlvr | TEXT | TLVR 規格 |
+| imax | INTEGER | 最大電流 (A) |
+| upload_date | TEXT | 上傳日期 |
+| notice | TEXT | 備註 |
+| series_number | INTEGER | 系列編號 |
+
+## 功能需求
+
+### 一般用戶
+* 多語言支援（正體中文/英文）
+* 上傳 CSV/Excel 檔案到 efficiency_table
+* 多條件搜尋效率資料
+* 即時效率曲線圖表顯示
+* 下載原始 CSV 數據
+
+### 管理者功能
+* 密碼登入取得管理權限
+* 資料庫備份（自動加時間戳記）
+* 資料庫還原功能
+* 動態新增/刪除資料表欄位
+* 記錄管理和刪除功能
+
+## 效能需求
+* 支援同時 10 位用戶線上操作
+* WebSocket 即時通知
+* 響應式網頁設計
+* 友善錯誤訊息提示
+
+## 部署方式
+
+### 本地部署
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+### Docker 部署
+```bash
+docker build -t vr-efficiency-app .
+docker run -p 5000:5000 vr-efficiency-app
+```
+
+### OpenShift 部署
+```bash
+# 使用 Dockerfile 建立映像
+oc new-build --dockerfile=- --name=vr-efficiency-app < Dockerfile
+
+# 或從 Git repository 部署
+oc new-app https://github.com/your-repo/vr_efficiency_web_query
+```
+
+## 上傳資料格式
+* **必要欄位**：Istep, Vin, Iin, Vout, remote Vout sense, Iout, Efficiency, Efficiency_remote
+* **檔案格式**：CSV 或 Excel (.xlsx, .xls)
+* **檔案編碼**：UTF-8
+* **分隔符號**：逗號 (CSV)
+
+## 環境變數
+* `SECRET_KEY`: Flask 應用程式密鑰
+* `ADMIN_PASSWORD`: 管理者密碼
+* `PORT`: 應用程式端口 (預設: 5000)
+* `FLASK_ENV`: 開發/生產環境設定
+
+## 檔案結構
+```
+vr_efficiency_web_query/
+├── app.py              # 主應用程式
+├── Dockerfile          # Docker 容器定義
+├── entrypoint.sh       # 容器入口腳本
+├── requirements.txt    # Python 依賴
+├── README.md          # 專案說明
+├── templates/         # HTML 模板
+├── static/           # 靜態資源
+└── data/            # 資料庫檔案目錄
+```
