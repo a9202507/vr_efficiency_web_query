@@ -768,4 +768,17 @@ if __name__ == '__main__':
     init_db()
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV', 'production') == 'development'
-    socketio.run(app, debug=debug, host='0.0.0.0', port=port)
+    
+    # 檢查是否在生產環境
+    if os.environ.get('FLASK_ENV', 'production') == 'production':
+        # 生產環境使用 eventlet 或允許不安全的 werkzeug
+        try:
+            import eventlet
+            eventlet.monkey_patch()
+            socketio.run(app, debug=False, host='0.0.0.0', port=port)
+        except ImportError:
+            # 如果沒有 eventlet，允許不安全的 werkzeug
+            socketio.run(app, debug=False, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
+    else:
+        # 開發環境
+        socketio.run(app, debug=debug, host='0.0.0.0', port=port)

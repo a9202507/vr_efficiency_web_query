@@ -178,6 +178,7 @@ vr_efficiency_web_query/
      ```
 
 2. **建置緩存問題**
+
    - 原因：OpenShift 使用緩存的層
    - 解決：
      ```bash
@@ -186,26 +187,38 @@ vr_efficiency_web_query/
      oc new-app python~https://github.com/your-repo/vr_efficiency_web_query.git
      ```
 
-### 部署檢查清單
+3. **Werkzeug 生產環境錯誤**
 
-在 OpenShift 部署前，請確認：
+   - 原因：Flask-SocketIO 不建議在生產環境使用 Werkzeug 伺服器
+   - 解決：應用程式會自動檢測環境並使用適當的設定
+   - 手動解決（如果需要）：
 
-- [ ] requirements.txt 中沒有 pandas, numpy, openpyxl
-- [ ] app.py 中沒有 `import pandas as pd`
-- [ ] Git repository 已推送最新代碼
-- [ ] 使用正確的 Git branch (main/master/development)
+     ```bash
+     # 設定生產環境變數
+     oc set env deployment/vr-efficiency-web-query-git FLASK_ENV=production
+     ```
 
-### 驗證步驟
+4. **WebSocket 連線問題**
+   - 原因：生產環境需要適當的 WSGI 伺服器
+   - 解決：應用程式已配置為在生產環境中使用 eventlet 或允許不安全的 werkzeug
+
+### OpenShift 特殊配置
+
+- OpenShift 使用 S2I (Source-to-Image) 建置流程
+- 自動處理用戶權限和檔案權限
+- 使用內建的 Python 3.12 基礎映像
+- 支援環境變數注入
+- **避免使用需要編譯的套件**
+- **生產環境自動配置**：應用程式會自動檢測並使用適當的 WSGI 伺服器設定
+
+### 環境變數配置
 
 ```bash
-# 1. 檢查 Git 狀態
-git status
-git log --oneline -5
+# 基本配置
+oc set env deployment/vr-efficiency-web-query-git FLASK_ENV=production
+oc set env deployment/vr-efficiency-web-query-git SECRET_KEY=your-secret-key
+oc set env deployment/vr-efficiency-web-query-git ADMIN_PASSWORD=your-admin-password
 
-# 2. 檢查檔案內容
-grep -n "pandas" app.py requirements.txt
-grep -n "numpy" app.py requirements.txt
-
-# 3. 強制推送（如果需要）
-git push --force-with-lease origin main
+# 可選：調整端口（如果需要）
+oc set env deployment/vr-efficiency-web-query-git PORT=8080
 ```
