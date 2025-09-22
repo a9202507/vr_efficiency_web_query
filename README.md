@@ -14,8 +14,7 @@
 * Flask Framework 2.3.3
 * Flask-SocketIO 5.3.6
 * SQLite (內建)
-* Pandas 2.0.3
-* Numpy 1.25.2
+* **注意：暫時移除 pandas/numpy 以避免編譯問題**
 
 ### 部署環境
 * 支援本地部署
@@ -23,10 +22,9 @@
 * **支援 RedHat OpenShift 部署**（使用 S2I 建置流程）
 
 ## 已知問題解決
-* **Python 3.12 distutils 問題**：使用預編譯套件版本避免編譯錯誤
+* **Python 3.12 distutils 問題**：移除需要編譯的套件（pandas, numpy）
 * **Flask 版本問題**：使用 Flask==2.3.3（OpenShift 套件庫支援的版本）
-* **Numpy/Pandas 相容性問題**：使用經過測試的穩定版本組合
-* **OpenShift S2I 建置**：專為 S2I 流程優化的套件版本
+* **OpenShift S2I 建置**：使用最簡化的套件依賴
 
 ## 資料庫設計 (SQLite)
 
@@ -115,7 +113,7 @@ oc set env deployment/vr-efficiency-web-query-git ADMIN_PASSWORD=your-admin-pass
 
 ## 上傳資料格式
 * **必要欄位**：Istep, Vin, Iin, Vout, remote Vout sense, Iout, Efficiency, Efficiency_remote
-* **檔案格式**：CSV 或 Excel (.xlsx, .xls)
+* **檔案格式**：CSV 檔案（暫不支援 Excel）
 * **檔案編碼**：UTF-8
 * **分隔符號**：逗號 (CSV)
 
@@ -142,8 +140,8 @@ vr_efficiency_web_query/
 
 ### 常見部署問題
 1. **distutils 模組錯誤 (Python 3.12)**
-   - 原因：Python 3.12 移除了 distutils，某些套件需要編譯
-   - 解決：使用預編譯套件版本，避免 numpy==1.24.3 等需要編譯的版本
+   - 原因：Python 3.12 移除了 distutils，pandas/numpy 需要編譯
+   - 解決：暫時移除 pandas/numpy，使用內建 CSV 處理
 
 2. **Flask 版本錯誤**
    - 原因：指定版本在 OpenShift 套件庫中不存在
@@ -151,11 +149,12 @@ vr_efficiency_web_query/
 
 3. **S2I 建置失敗**
    - 原因：套件版本與基礎映像不相容或需要編譯
-   - 解決：使用經過測試的 requirements.txt 版本組合
+   - 解決：使用最簡化的 requirements.txt
 
-4. **numpy.dtype size changed 錯誤**
-   - 原因：pandas 和 numpy 版本不相容
-   - 解決：使用 numpy==1.25.2 和 pandas==2.0.3 組合
+4. **檔案處理替代方案**
+   - 原問題：pandas 用於 CSV/Excel 處理
+   - 解決：使用 Python 內建 csv 模組處理 CSV 檔案
+   - 限制：暫時不支援 Excel 檔案上傳
 
 5. **權限問題 (OpenShift)**
    - 原因：容器使用任意用戶 ID
@@ -166,10 +165,15 @@ vr_efficiency_web_query/
 - 自動處理用戶權限和檔案權限
 - 使用內建的 Python 3.12 基礎映像
 - 支援環境變數注入
-- 避免使用需要編譯的套件版本
+- **避免使用需要編譯的套件**
 
 ### 套件版本選擇原則
-1. **優先使用預編譯套件**：避免 Python 3.12 distutils 問題
-2. **版本相容性測試**：確保 numpy/pandas 版本相容
+1. **優先使用純 Python 套件**：避免編譯依賴
+2. **最小化依賴**：只使用必要的套件
 3. **OpenShift 套件庫支援**：使用 OpenShift 內部套件庫可用的版本
 4. **穩定性優先**：選擇經過長時間測試的穩定版本
+
+### 臨時限制
+- **檔案上傳格式**：目前僅支援 CSV 檔案（不支援 Excel）
+- **資料處理**：使用 Python 內建 csv 模組而非 pandas
+- **數值計算**：使用內建 Python 運算而非 numpy

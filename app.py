@@ -2,7 +2,6 @@
 from flask import Flask, request, jsonify, render_template, send_file, session, abort, redirect, url_for, make_response
 from flask_socketio import SocketIO, emit, join_room
 import sqlite3
-import pandas as pd
 import json
 import os
 import shutil
@@ -123,14 +122,9 @@ def upload_file():
     if file.filename == '':
         return jsonify({'error': '請選擇檔案'}), 400
 
-    # 檢查檔案類型
-    if file.filename.endswith('.csv'):
-        file_content = file.read().decode('utf-8')
-        df = pd.read_csv(io.StringIO(file_content))
-    elif file.filename.endswith(('.xlsx', '.xls')):
-        df = pd.read_excel(file)
-    else:
-        return jsonify({'error': '不支援的檔案格式，請上傳 CSV 或 Excel 檔案'}), 400
+    # 只支援 CSV 檔案
+    if not file.filename.endswith('.csv'):
+        return jsonify({'error': '目前僅支援 CSV 檔案格式'}), 400
 
     # 獲取 information_table 資料
     info_data = {
@@ -147,9 +141,20 @@ def upload_file():
     }
 
     try:
+        # 讀取 CSV 檔案
+        file_content = file.read().decode('utf-8')
+        csv_reader = csv.DictReader(io.StringIO(file_content))
+        
+        # 轉換為 list 以便多次迭代
+        rows = list(csv_reader)
+        
+        if not rows:
+            return jsonify({'error': 'CSV 檔案為空'}), 400
+
         # 驗證必要欄位
         required_columns = ['Istep', 'Vin', 'Iin', 'Vout', 'remote Vout sense', 'Iout', 'Efficiency', 'Efficiency_remote']
-        missing_columns = [col for col in required_columns if col not in df.columns]
+        available_columns = rows[0].keys() if rows else []
+        missing_columns = [col for col in required_columns if col not in available_columns]
 
         if missing_columns:
             return jsonify({'error': f'缺少必要欄位: {", ".join(missing_columns)}'}), 400
@@ -172,17 +177,30 @@ def upload_file():
 
         # 插入 efficiency_table 並獲取 series_number
         series_number = None
-        for _, row in df.iterrows():
-            cursor.execute('''
-                INSERT INTO efficiency_table 
-                (istep, vin, iin, vout, remote_vout_sense, iout, efficiency, efficiency_remote, user_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (row['Istep'], row['Vin'], row['Iin'], row['Vout'],
-                  row['remote Vout sense'], row['Iout'], row['Efficiency'], 
-                  row['Efficiency_remote'], user_id))
+        for row in rows:
+            try:
+                cursor.execute('''
+                    INSERT INTO efficiency_table 
+                    (istep, vin, iin, vout, remote_vout_sense, iout, efficiency, efficiency_remote, user_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    float(row['Istep']), 
+                    float(row['Vin']), 
+                    float(row['Iin']), 
+                    float(row['Vout']),
+                    float(row['remote Vout sense']), 
+                    float(row['Iout']), 
+                    float(row['Efficiency']), 
+                    float(row['Efficiency_remote']), 
+                    user_id
+                ))
 
-            if series_number is None:
-                series_number = cursor.lastrowid
+                if series_number is None:
+                    series_number = cursor.lastrowid
+            except (ValueError, TypeError) as e:
+                conn.rollback()
+                conn.close()
+                return jsonify({'error': f'資料格式錯誤: {str(e)}'}), 400
 
         # 更新 information_table 的 series_number
         cursor.execute('''
@@ -204,6 +222,8 @@ def upload_file():
 
         return jsonify({'success': True, 'user_id': user_id, 'series_number': series_number})
 
+    except UnicodeDecodeError:
+        return jsonify({'error': 'CSV 檔案編碼錯誤，請確保使用 UTF-8 編碼'}), 400
     except Exception as e:
         return jsonify({'error': f'處理檔案時發生錯誤: {str(e)}'}), 500
 
