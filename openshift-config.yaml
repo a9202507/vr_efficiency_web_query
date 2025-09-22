@@ -8,12 +8,13 @@ items:
       name: vr-efficiency-web-query
       labels:
         app: vr-efficiency-web-query
+        version: "v2"
     spec:
       source:
         type: Git
         git:
-          uri: https://github.com/your-repo/vr_efficiency_web_query.git
-          ref: main
+          uri: https://github.com/a9202507/vr_efficiency_web_query.git
+          ref: development
       strategy:
         type: Source
         sourceStrategy:
@@ -21,10 +22,16 @@ items:
             kind: ImageStreamTag
             namespace: openshift
             name: python:3.12-ubi8
+          env:
+            - name: BUILD_LOGLEVEL
+              value: "2"
       output:
         to:
           kind: ImageStreamTag
           name: vr-efficiency-web-query:latest
+      triggers:
+        - type: ConfigChange
+        - type: ImageChange
 
   # ImageStream
   - apiVersion: image.openshift.io/v1
@@ -33,18 +40,21 @@ items:
       name: vr-efficiency-web-query
       labels:
         app: vr-efficiency-web-query
+        version: "v2"
 
-  # DeploymentConfig
-  - apiVersion: apps.openshift.io/v1
-    kind: DeploymentConfig
+  # 使用 Deployment 而非 DeploymentConfig (避免配額限制)
+  - apiVersion: apps/v1
+    kind: Deployment
     metadata:
       name: vr-efficiency-web-query
       labels:
         app: vr-efficiency-web-query
+        version: "v2"
     spec:
       replicas: 1
       selector:
-        app: vr-efficiency-web-query
+        matchLabels:
+          app: vr-efficiency-web-query
       template:
         metadata:
           labels:
@@ -52,17 +62,19 @@ items:
         spec:
           containers:
             - name: vr-efficiency-web-query
-              image: vr-efficiency-web-query:latest
+              image: image-registry.openshift-image-registry.svc:5000/play-efficiency-curve/vr-efficiency-web-query:latest
               ports:
                 - containerPort: 5000
                   protocol: TCP
               env:
                 - name: SECRET_KEY
-                  value: "your-secret-key-here"
+                  value: "vr-efficiency-system-secret-2024"
                 - name: ADMIN_PASSWORD
-                  value: "your-admin-password-here"
+                  value: "admin123"
                 - name: FLASK_ENV
                   value: "production"
+                - name: PORT
+                  value: "5000"
               resources:
                 limits:
                   memory: "512Mi"
@@ -70,16 +82,20 @@ items:
                 requests:
                   memory: "256Mi"
                   cpu: "100m"
-      triggers:
-        - type: ImageChange
-          imageChangeParams:
-            automatic: true
-            containerNames:
-              - vr-efficiency-web-query
-            from:
-              kind: ImageStreamTag
-              name: vr-efficiency-web-query:latest
-        - type: ConfigChange
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: 5000
+                initialDelaySeconds: 30
+                periodSeconds: 10
+                timeoutSeconds: 5
+              readinessProbe:
+                httpGet:
+                  path: /
+                  port: 5000
+                initialDelaySeconds: 5
+                periodSeconds: 5
+                timeoutSeconds: 3
 
   # Service
   - apiVersion: v1
@@ -88,29 +104,32 @@ items:
       name: vr-efficiency-web-query
       labels:
         app: vr-efficiency-web-query
+        version: "v2"
     spec:
       selector:
         app: vr-efficiency-web-query
       ports:
-        - name: 5000-tcp
+        - name: web
           port: 5000
           protocol: TCP
           targetPort: 5000
+      type: ClusterIP
 
-  # Route (自動創建外部訪問路由)
+  # Route
   - apiVersion: route.openshift.io/v1
     kind: Route
     metadata:
       name: vr-efficiency-web-query
       labels:
         app: vr-efficiency-web-query
+        version: "v2"
     spec:
       to:
         kind: Service
         name: vr-efficiency-web-query
         weight: 100
       port:
-        targetPort: 5000-tcp
+        targetPort: web
       tls:
         termination: edge
         insecureEdgeTerminationPolicy: Redirect

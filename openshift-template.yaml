@@ -25,7 +25,7 @@ parameters:
     displayName: Flask Secret Key
     description: Secret key for Flask application
     generate: expression
-    from: '[a-zA-Z0-9]{32}'
+    from: "[a-zA-Z0-9]{32}"
     required: true
   - name: ADMIN_PASSWORD
     displayName: Admin Password

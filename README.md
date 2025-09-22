@@ -136,9 +136,30 @@ oc get route
 
 ## 建置階段設定方法
 
+### 0. 清理現有資源（如果需要）
+
+```bash
+# 如果遇到資源已存在錯誤，先清理現有資源
+oc delete all -l app=vr-efficiency-web-query-git
+oc delete all -l app=vr-efficiency-web-query
+
+# 或者逐一刪除特定資源
+oc delete bc/vr-efficiency-web-query-git
+oc delete bc/vr-efficiency-web-query
+oc delete is/vr-efficiency-web-query-git
+oc delete is/vr-efficiency-web-query
+oc delete dc/vr-efficiency-web-query-git
+oc delete deployment/vr-efficiency-web-query
+oc delete svc/vr-efficiency-web-query-git
+oc delete svc/vr-efficiency-web-query
+oc delete route/vr-efficiency-web-query-git
+oc delete route/vr-efficiency-web-query
+```
+
 ### 1. S2I 環境設定檔案（自動生效）
 
 在專案根目錄創建 `.s2i/environment` 檔案：
+
 ```bash
 SECRET_KEY=vr-efficiency-default-secret-key
 ADMIN_PASSWORD=admin123
@@ -149,6 +170,7 @@ PORT=5000
 ### 2. OpenShift Template（參數化部署）
 
 使用 Template 進行參數化部署：
+
 ```bash
 # 部署 Template 到 OpenShift
 oc apply -f openshift-template.yaml
@@ -170,11 +192,12 @@ oc apply -f openshift-config.yaml
 ### 4. Kustomize 配置（進階）
 
 創建不同環境的配置覆蓋：
+
 ```bash
 # 開發環境
 oc apply -k overlays/development
 
-# 生產環境  
+# 生產環境
 oc apply -k overlays/production
 ```
 
@@ -323,6 +346,7 @@ vr_efficiency_web_query/
      ```
 
 5. **應用程式無回應**
+
    - 檢查 Pod 狀態和日誌：
      ```bash
      oc get pods -l app=vr-efficiency-web-query-git
@@ -330,18 +354,77 @@ vr_efficiency_web_query/
      oc describe pod <pod-name>
      ```
 
-### 部署檢查清單
+6. **資源已存在錯誤**
 
-在 OpenShift 部署前，請確認：
+   - 錯誤：`already exists` 或 `exceeded quota`
+   - 原因：之前的部署資源未清理，或配額限制
+   - 解決步驟：
 
-- [ ] requirements.txt 中沒有 pandas, numpy, openpyxl
-- [ ] app.py 中沒有 `import pandas as pd`
-- [ ] Git repository 已推送最新代碼
-- [ ] 使用正確的 Git branch (main/master/development)
-- [ ] 應用程式能自動檢測 OpenShift 環境
-- [ ] 已創建 OpenShift 路由提供外部訪問
+     ```bash
+     # 1. 清理現有資源
+     oc delete all -l app=vr-efficiency-web-query-git
+     oc delete all -l app=vr-efficiency-web-query
 
-### 訪問應用程式
+     # 2. 檢查配額使用情況
+     oc describe quota
+
+     # 3. 如果是 DeploymentConfig 配額問題，使用 Deployment
+     oc apply -f openshift-config.yaml
+
+     # 4. 或者使用替代部署方法
+     oc new-app python~https://github.com/a9202507/vr_efficiency_web_query.git \
+       --name=vr-efficiency-app-new
+     ```
+
+7. **DeploymentConfig 配額限制**
+   - 錯誤：`exceeded quota: count/deploymentconfigs.apps.openshift.io=0`
+   - 原因：OpenShift 專案限制 DeploymentConfig 數量
+   - 解決：使用 Deployment 替代 DeploymentConfig（已在新配置中修改）
+
+### 部署方法選擇
+
+根據您的 OpenShift 環境配額限制，推薦使用順序：
+
+1. **推薦：使用修改後的 YAML 配置**
+
+   ```bash
+   # 清理現有資源後部署
+   oc delete all -l app=vr-efficiency-web-query-git
+   oc apply -f openshift-config.yaml
+   ```
+
+2. **備選：使用 S2I 直接部署**
+
+   ```bash
+   oc new-app python~https://github.com/a9202507/vr_efficiency_web_query.git \
+     --name=vr-efficiency-new \
+     -e SECRET_KEY=your-secret-key \
+     -e ADMIN_PASSWORD=your-admin-password
+   oc expose service/vr-efficiency-new
+   ```
+
+3. **備選：使用 Template**
+   ```bash
+   oc process -f openshift-template.yaml | oc apply -f -
+   ```
+
+### 檢查資源狀態
+
+```bash
+# 檢查所有相關資源
+oc get all -l app=vr-efficiency-web-query
+
+# 檢查配額使用情況
+oc describe quota
+
+# 檢查 Pod 狀態
+oc get pods -l app=vr-efficiency-web-query
+
+# 查看詳細日誌
+oc logs -l app=vr-efficiency-web-query -f
+```
+
+## 訪問應用程式
 
 部署成功後，通過以下步驟訪問應用程式：
 
